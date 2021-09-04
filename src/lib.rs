@@ -28,7 +28,7 @@ pub extern "C" fn hello() {
 }
 
 fn msg(caption: &str) {
-    let lp_text: Vec<u16> = "Hello World! \u{1F60E}\0".encode_utf16().collect();
+    let lp_text: Vec<u16> = "Hello World!!\0".encode_utf16().collect();
     let lp_caption: Vec<u16> = caption.encode_utf16().collect();
 
     unsafe {
