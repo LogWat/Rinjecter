@@ -9,8 +9,23 @@ VOID error_box(LPCWSTR lptext, LPCWSTR title) {
     return;
 }
 
-// CreateThreadで起動される関数
-DWORD WINAPI Thread1Proc() {
+// Obtain the self address
+DWORD WINAPI Thread2Proc() {
+    int self_addr = 0;
+    int tmp = *((int *)d_path) + 0x2DD5;
+    int *test = *(int **)d_path;
+    while (self_addr == 0) {
+        for (int i = 0; i < 4; i++) {
+            if (*(int *)(test + 0x2DD5 + i) > 0x4C0000) {
+                *(int *)(test + 0x2DD2) = 0x21212121;
+                if (**(int **)(test + 0x2DD5 + i) == 0x313D) {
+                    *(*(int **)(test + 0x2DD5 + i) + 0x4) = 0x21212121;
+                    self_addr = *((int *)(test + 0x2DD5 + i));
+                }
+            }
+        }
+    }
+    // *((int *)(self_addr + 0x389)) = -210384;
     return 0;
 }
 
@@ -26,7 +41,7 @@ void displayname_change() {
     *(int *)(start1 + 0x4) = 0x7473694D; // Mistaken
     *(int *)(start1 + 0x5) = 0x6E656B61;
 
-    int num_of_char = *(*((int **)d_path) + 0x335); //[d_path]+3284
+    int num_of_char = *(*((int **)d_path) + 0x335); // [d_path]+3284
     int counter = 0;
     for (int *i = start2; counter <= num_of_char; i += 0x10E) {
         if (*((int *)(i + 0x1)) == 0x7473694D && *((int *)(i + 0x2)) == 0x6E656B61) {
@@ -68,11 +83,13 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved){
 
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
-            MessageBoxW(NULL, L"！！！！", L":D", MB_OK);
             displayname_change();
             if (!change_memprotect()) {
                 error_box(L"change_memprotect() <= Failed!", L"⚠ ERROR ⚠");
             }
+            int param;
+            CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Thread2Proc, (LPVOID)&param, 0, NULL);
+
             break;
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:
