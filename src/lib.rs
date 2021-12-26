@@ -33,25 +33,28 @@ pub unsafe extern "stdcall" fn DllMain(_: HINSTANCE, reason: u32, _: u32) -> BOO
 // この場合，アスタリスクは参照外しではなく型の一部である
 unsafe extern "stdcall" fn changedisplayname() -> bool {
     let mut last_page: DWORD = 0;
-    let last_page2: DWORD = 0;
 
-    let address1 = (*(DPATH as *mut i32)) as *mut i32; // [[0x4B5B4C]]
     let address2 = (*((*(DPATH as *mut i32)) as *mut i32) + 0x64B) as *mut i32; // [[[0x4B5B4C]] + 0x64B]
 
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0x335) as *mut i32); // [[0x4B5B4C] + 0x335]
-    let counter = address2;
-    for i in 0..num_of_characters {
-        if *((i + 0x1) as *mut i32) == 0x7473694D && *((i + 0x2) as *mut i32) == 0x6E656B61 {
+    let c = address2;
+    for _ in 0..num_of_characters {
+        if *((c as i32 + 0x4) as *mut i32) == 0x7473694D && *((c as i32 + 0x8) as *mut i32) == 0x6E656B61 {
             if VirtualProtect(
-                counter as *mut _,
+                c as *mut _,
                 (size_of::<i32>() * 4) as u64,
                 PAGE_READWRITE,
                 &mut last_page
             ) == 0 {
                 return false;
             }
+            *((c as i32 + 0x4) as *mut i32) = 0x45544154;
+            *((c as i32 + 0x8) as *mut i32) = 0x4157414B;
+            *((c as i32 + 0xC) as *mut i32) = 0x44414E53;
+            *((c as i32 + 0x10) as *mut i32) = 0x4948;
+            break;
         }
-        *counter += 0x10E;
+        *c += 0x10E;
     }
     true
 }
