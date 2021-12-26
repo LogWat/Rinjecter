@@ -14,7 +14,7 @@ const DPATH: u32 = 0x4B5B4C;
 pub unsafe extern "stdcall" fn DllMain(_: HINSTANCE, reason: u32, _: u32) -> BOOL {
 
     match reason {
-        DLL_PROCESSS_ATTACH => {
+        1 => {
             if changedisplayname() {
                 let errtext = "Failed to change display name.\0".to_string();
                 errMsgBox(errtext);
@@ -26,13 +26,16 @@ pub unsafe extern "stdcall" fn DllMain(_: HINSTANCE, reason: u32, _: u32) -> BOO
     TRUE
 }
 
+// 生ポインタの利用 *mut or *const
+// この場合，アスタリスクは参照外しではなく型の一部である
 unsafe extern "stdcall" fn changedisplayname() -> bool {
     let oldp: DWORD = 0;
     let oldp2: DWORD = 0;
 
-    let address1 = DPATH as *mut i32;
-    let address2 = *(*((i32 ***) (DPATH as *const i32)) as *const i32) as *const i32;
+    let address1 = (*(DPATH as *mut i32)) as *mut i32; // [[0x4B5B4C]]
+    let address2 = (*((*(DPATH as *mut i32)) as *mut i32) + 0x64B) as *mut i32; // [[[0x4B5B4C]] + 0x64B]
 
+    let num_of_characters = ((*(DPATH as *mut i32)) + 0x335) as *mut i32; // [[0x4B5B4C] + 0x335]
     true
 }
 
@@ -41,9 +44,10 @@ unsafe extern "stdcall" fn errMsgBox(text: String) {
     let caption = "⚠Error⚠\0".to_string();
     let lp_caption: Vec<u16> = caption.encode_utf16().collect();
 
-    MessageBoxW(std::ptr::null_mut(),
-                lp_text.as_ptr(),
-                lp_caption.as_ptr(),
-                MB_OK
-            );
+    MessageBoxW(
+        std::ptr::null_mut(),
+        lp_text.as_ptr(),
+        lp_caption.as_ptr(),
+        MB_OK
+    );
 }
