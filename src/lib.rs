@@ -11,6 +11,8 @@ use kernel32::*;
 
 use std::mem::size_of;
 
+use std::convert::TryInto;
+
 const DPATH: u32 = 0x4B5B4C;
 
 #[no_mangle]
@@ -37,12 +39,14 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
     let address2 = (*((*(DPATH as *mut i32)) as *mut i32) + 0x64B) as *mut i32; // [[[0x4B5B4C]] + 0x64B]
 
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0x335) as *mut i32); // [[0x4B5B4C] + 0x335]
+    let message = format!("{}", num_of_characters);
+    err_msgbox(message);
     let c = address2;
     for _ in 0..num_of_characters {
         if *((c as i32 + 0x4) as *mut i32) == 0x7473694D && *((c as i32 + 0x8) as *mut i32) == 0x6E656B61 {
             if VirtualProtect(
                 c as *mut _,
-                (size_of::<i32>() * 4) as u64,
+                ((size_of::<i32>() * 4) as u64).try_into().unwrap(),
                 PAGE_READWRITE,
                 &mut last_page
             ) == 0 {
