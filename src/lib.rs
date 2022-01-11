@@ -10,8 +10,8 @@ use winapi::shared::minwindef::*;
 use kernel32::*;
 
 use std::mem::size_of;
-
 use std::convert::TryInto;
+use rand::Rng;
 
 const DPATH: u32 = 0x4B5B4C;
 
@@ -39,6 +39,7 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
 
     let mut last_page: DWORD = 0;
+    let names: Vec<&[u8]> = vec![b"Hello, UnderWorld!\0", b"\\(^o^)/\0", b"MMMIIISSSTTTAAAKKKEEENNN\0", b" \0", b"OMFG! Miko!!!\0"];
 
     for _ in 0..num_of_characters {
         if *((addr + 0x4) as *mut i32) == 0x7473694D && *((addr + 0x8) as *mut i32) == 0x6E656B61 {
@@ -53,8 +54,12 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
                 return false;
             }
 
-            *((addr + 0x4) as *mut i32) = 0x21212121;
-            *((addr + 0x8) as *mut i32) = 0x21212121;
+            // Nameを書き換え
+            let mut rng = rand::thread_rng();
+            let name_index = rng.gen_range(0..(names.len() - 1));
+            for i in 0..names[name_index].len() {
+                *((addr + 0x4 + i as i32) as *mut u8) = names[name_index][i];
+            }
 
             // 権限を元に戻す
             if VirtualProtect(
