@@ -17,7 +17,7 @@ const DPATH: u32 = 0x4B5B4C;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
-    _: winapi::shared::minwindef::HINSTANCE, 
+    hinst_dll: winapi::shared::minwindef::HINSTANCE, 
     reason: winapi::shared::minwindef::DWORD,
     _: winapi::shared::minwindef::LPVOID
 ) -> i32 {
@@ -25,6 +25,7 @@ pub extern "stdcall" fn DllMain(
     match reason {
         winapi::um::winnt::DLL_PROCESS_ATTACH => {
             unsafe {
+                winapi::um::libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 if changedisplayname() == false {
                     let errtext = "Failed to change display name.\0".to_string();
                     err_msgbox(errtext);
