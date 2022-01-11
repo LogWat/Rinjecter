@@ -39,8 +39,6 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
     let address2 = (*((*(DPATH as *mut i32) + 0x192C) as *mut i32)) as *mut i32; // [[0x4B5B4C] + 0x64B * 4]
 
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
-    let message = format!("{}", *((address2 as i32 + 0x4) as *mut i32));
-    err_msgbox(message);
 
     let mut c = address2;
     for _ in 0..num_of_characters {
