@@ -36,11 +36,13 @@ pub unsafe extern "stdcall" fn DllMain(_: HINSTANCE, reason: u32, _: u32) -> BOO
 unsafe extern "stdcall" fn changedisplayname() -> bool {
     let mut last_page: DWORD = 0;
 
-    let address2 = (*((*(DPATH as *mut i32) + 0x64B * 4) as *mut i32)) as *mut i32; // [[0x4B5B4C] + 0x64B * 4]
+    let address2 = (*((*(DPATH as *mut i32) + 0x192C) as *mut i32)) as *mut i32; // [[0x4B5B4C] + 0x64B * 4]
 
-    let num_of_characters = *(((*(DPATH as *mut i32)) + 0x335 * 4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
-    
-    let c = address2;
+    let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
+    let message = format!("{}", *((address2 as i32 + 0x4) as *mut i32));
+    err_msgbox(message);
+
+    let mut c = address2;
     for _ in 0..num_of_characters {
         if *((c as i32 + 0x4) as *mut i32) == 0x7473694D && *((c as i32 + 0x8) as *mut i32) == 0x6E656B61 {
             if VirtualProtect(
@@ -51,15 +53,14 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
             ) == 0 {
                 return false;
             }
-            *((c as i32 + 0x4) as *mut i32) = 0x45544154;
-            *((c as i32 + 0x8) as *mut i32) = 0x4157414B;
-            *((c as i32 + 0xC) as *mut i32) = 0x44414E53;
-            *((c as i32 + 0x10) as *mut i32) = 0x4948;
-            break;
+            *((c as i32 + 0x4) as *mut i32) = 0x21212121;
+            *((c as i32 + 0x8) as *mut i32) = 0x21212121;
+            
+            return true;
         }
-        *c += 0x10E;
+        c = (c as i32 + 0x438) as *mut i32;
     }
-    true
+    false
 }
 
 unsafe extern "stdcall" fn err_msgbox(text: String) {
