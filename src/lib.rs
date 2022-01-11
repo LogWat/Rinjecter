@@ -16,14 +16,21 @@ use rand::Rng;
 const DPATH: u32 = 0x4B5B4C;
 
 #[no_mangle]
-pub unsafe extern "stdcall" fn DllMain(_: HINSTANCE, reason: u32, _: u32) -> BOOL {
+pub extern "stdcall" fn DllMain(
+    _: winapi::shared::minwindef::HINSTANCE, 
+    reason: winapi::shared::minwindef::DWORD,
+    _: winapi::shared::minwindef::LPVOID
+) -> i32 {
 
     match reason {
-        1 => {
-            if changedisplayname() == false {
-                let errtext = "Failed to change display name.\0".to_string();
-                err_msgbox(errtext);
+        winapi::um::winnt::DLL_PROCESS_ATTACH => {
+            unsafe {
+                if changedisplayname() == false {
+                    let errtext = "Failed to change display name.\0".to_string();
+                    err_msgbox(errtext);
+                }
             }
+            return 1;
         },
         _ => {}
     }
@@ -39,7 +46,7 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
 
     let mut last_page: DWORD = 0;
-    let names: Vec<&[u8]> = vec![b"Hello, UnderWorld!\0", b"\\(^o^)/\0", b"MMMIIISSSTTTAAAKKKEEENNN\0", b" \0", b"OMFG! Miko!!!\0"];
+    let names: Vec<&[u8]> = vec![b"Hello, UnderWorld!\0", b"\\(^o^)/\0", b"OXOXOXOXOXOXOXOXOXOXOXOXO\0", b" \0", b"OMFG! Miko!!!\0"];
 
     for _ in 0..num_of_characters {
         if *((addr + 0x4) as *mut i32) == 0x7473694D && *((addr + 0x8) as *mut i32) == 0x6E656B61 {
