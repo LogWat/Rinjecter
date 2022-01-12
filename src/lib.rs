@@ -17,13 +17,13 @@ const DPATH: u32 = 0x4B5B4C;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
-    hinst_dll: winapi::shared::minwindef::HINSTANCE, 
-    reason: winapi::shared::minwindef::DWORD,
-    _: winapi::shared::minwindef::LPVOID
+    hinst_dll: HINSTANCE, 
+    reason: DWORD,
+    _: LPVOID
 ) -> i32 {
 
     match reason {
-        winapi::um::winnt::DLL_PROCESS_ATTACH => {
+        DLL_PROCESS_ATTACH => {
             unsafe {
                 winapi::um::libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 if changedisplayname() == false {
@@ -40,7 +40,6 @@ pub extern "stdcall" fn DllMain(
 }
 
 // 生ポインタの利用 *mut or *const
-// この場合，アスタリスクは参照外しではなく型の一部である
 unsafe extern "stdcall" fn changedisplayname() -> bool {
 
     let mut addr = *((*(DPATH as *mut i32) + 0x192C) as *mut i32); // [[0x4B5B4C] + 0x64B * 4]
