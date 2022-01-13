@@ -4,50 +4,14 @@ extern crate user32;
 extern crate winapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, processthreadsapi, memoryapi, libloaderapi};
+use winapi::um::{winnt::*, memoryapi, libloaderapi};
 use winapi::shared::minwindef::*;
 
 use std::{mem};
-use failure::Error;
 use std::convert::TryInto;
 use rand::Rng;
-use getset::Getters;
 
 const DPATH: u32 = 0x4B5B4C;
-
-#[derive(Getters)]
-#[get = "pub"]
-pub struct Process {
-    handle: HANDLE,
-    pid: DWORD,
-}
-
-impl Process {
-    pub fn current_process() -> Self {
-        let handle = unsafe { processthreadsapi::GetCurrentProcess() };
-        let pid = unsafe { processthreadsapi::GetProcessId(handle) };
-        Process { handle, pid }
-    }
-
-    pub fn read_memory(&self, address:u32) -> Result<u32> {
-        let mut buffer: u32 = 0;
-        let mut bytes_read: libc::size_t = 0;
-        let result = unsafe { 
-            memoryapi::ReadProcessMemory(
-                self.handle, 
-                address as *const _, 
-                &mut buffer as *mut _ as *mut _,
-                mem::size_of::<u32>(),
-                &mut bytes_read as *mut _,
-            )
-        };
-
-        if result == 0 || bytes_read != 0 {
-        }
-
-        Ok(buffer)
-    }
-}
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
