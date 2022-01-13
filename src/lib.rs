@@ -4,10 +4,11 @@ extern crate user32;
 extern crate winapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, processthreadsapi, memoryapi};
+use winapi::um::{winnt::*, processthreadsapi, memoryapi, libloaderapi};
 use winapi::shared::minwindef::*;
 
-use std::mem::size_of;
+use std::{mem};
+use failure::Error;
 use std::convert::TryInto;
 use rand::Rng;
 use getset::Getters;
@@ -27,6 +28,25 @@ impl Process {
         let pid = unsafe { processthreadsapi::GetProcessId(handle) };
         Process { handle, pid }
     }
+
+    pub fn read_memory(&self, address:u32) -> Result<u32> {
+        let mut buffer: u32 = 0;
+        let mut bytes_read: libc::size_t = 0;
+        let result = unsafe { 
+            memoryapi::ReadProcessMemory(
+                self.handle, 
+                address as *const _, 
+                &mut buffer as *mut _ as *mut _,
+                mem::size_of::<u32>(),
+                &mut bytes_read as *mut _,
+            )
+        };
+
+        if result == 0 || bytes_read != 0 {
+        }
+
+        Ok(buffer)
+    }
 }
 
 #[no_mangle]
@@ -39,7 +59,7 @@ pub extern "stdcall" fn DllMain(
     match reason {
         DLL_PROCESS_ATTACH => {
             unsafe {
-                winapi::um::libloaderapi::DisableThreadLibraryCalls(hinst_dll);
+                libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 if changedisplayname() == false {
                     let errtext = "Failed to change display name.\0".to_string();
                     err_msgbox(errtext);
@@ -69,7 +89,7 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
             // 書き換えを行うために権限変更
             if memoryapi::VirtualProtect(
                 addr as *mut _,
-                ((size_of::<i32>() * 4) as u64).try_into().unwrap(),
+                ((mem::size_of::<i32>() * 4) as u64).try_into().unwrap(),
                 PAGE_READWRITE,
                 &mut last_page
             ) == 0 {
@@ -86,7 +106,7 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
             // 権限を元に戻す
             if memoryapi::VirtualProtect(
                 addr as *mut _,
-                ((size_of::<i32>() * 4) as u64).try_into().unwrap(),
+                ((mem::size_of::<i32>() * 4) as u64).try_into().unwrap(),
                 last_page,
                 &mut last_page
             ) == 0 {
