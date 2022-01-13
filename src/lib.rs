@@ -2,18 +2,32 @@
 extern crate libc;
 extern crate user32;
 extern crate winapi;
-extern crate kernel32;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::winnt::*;
+use winapi::um::{winnt::*, processthreadsapi, memoryapi};
 use winapi::shared::minwindef::*;
-use kernel32::*;
 
 use std::mem::size_of;
 use std::convert::TryInto;
 use rand::Rng;
+use getset::Getters;
 
 const DPATH: u32 = 0x4B5B4C;
+
+#[derive(Getters)]
+#[get = "pub"]
+pub struct Process {
+    handle: HANDLE,
+    pid: DWORD,
+}
+
+impl Process {
+    pub fn current_process() -> Self {
+        let handle = unsafe { processthreadsapi::GetCurrentProcess() };
+        let pid = unsafe { processthreadsapi::GetProcessId(handle) };
+        Process { handle, pid }
+    }
+}
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
@@ -31,12 +45,13 @@ pub extern "stdcall" fn DllMain(
                     err_msgbox(errtext);
                 }
             }
-            return 1;
+            return true as i32;
         },
-        _ => {}
+        DLL_PROCESS_DETACH => {
+            return true as i32;
+        },
+        _ => true as i32,
     }
-
-    TRUE
 }
 
 // 生ポインタの利用 *mut or *const
@@ -52,7 +67,7 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
         if *((addr + 0x4) as *mut i32) == 0x7473694D && *((addr + 0x8) as *mut i32) == 0x6E656B61 {
 
             // 書き換えを行うために権限変更
-            if VirtualProtect(
+            if memoryapi::VirtualProtect(
                 addr as *mut _,
                 ((size_of::<i32>() * 4) as u64).try_into().unwrap(),
                 PAGE_READWRITE,
@@ -69,7 +84,7 @@ unsafe extern "stdcall" fn changedisplayname() -> bool {
             }
 
             // 権限を元に戻す
-            if VirtualProtect(
+            if memoryapi::VirtualProtect(
                 addr as *mut _,
                 ((size_of::<i32>() * 4) as u64).try_into().unwrap(),
                 last_page,
