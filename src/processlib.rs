@@ -15,3 +15,15 @@ pub struct Module {
     pub base_address: u32,
     pub size: u32,
 }
+
+
+impl Process {
+    pub fn current_process() -> Self {
+        let mut process = Self {
+            pid: 0,
+            handle: unsafe { handleapi::GetCurrentProcess() },
+        };
+        process.pid = unsafe { processthreadsapi::GetProcessId(process.handle) };
+        process
+    }
+}
