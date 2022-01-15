@@ -26,4 +26,22 @@ impl Process {
         process.pid = unsafe { processthreadsapi::GetProcessId(process.handle) };
         process
     }
+
+    pub fn read_memory(&self, address: u32) -> Result<u32, &'static str> {
+        let mut buffer: Vec<u8> = vec![0; 0x1000];
+        let mut bytes_read: u32 = 0;
+        unsafe {
+            if memoryapi::ReadProcessMemory(
+                self.handle,
+                address as *mut _,
+                buffer.as_mut_ptr() as *mut _,
+                buffer.len() as u32,
+                &mut bytes_read,
+            ) != (true as _) || bytes_read == 0 {
+                mem::forget(buffer);
+                return Err("Failed to read memory.");
+            }
+        }
+        Ok(buffer)
+    }
 }
