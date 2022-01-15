@@ -3,6 +3,8 @@ extern crate libc;
 extern crate user32;
 extern crate winapi;
 
+mod processlib;
+
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, memoryapi, libloaderapi};
 use winapi::shared::minwindef::*;
