@@ -1,5 +1,5 @@
 use getset::Getters;
-use std::{mem};
+use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt};
 use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt};
 
 #[derive(Getters)]
@@ -16,6 +16,12 @@ pub struct Module {
     pub size: u32,
 }
 
+#[derive(Getters)]
+#[get = "pub"]
+pub struct Thread {
+    pub handle: winnt::HANDLE,
+    pub tid: u32,
+}
 
 impl Process {
     pub fn current_process() -> Self {
@@ -47,13 +53,33 @@ impl Process {
     }
 
     pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
-        let module = Module {
-            unsafe { tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) },
+        let module = unsafe { 
+            tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) 
         };
         if module == handleapi::INVALID_HANDLE_VALUE {
             return Err("Failed to create snapshot.");
         }
 
-        let mut module_entry: htlhelp32::MODULEENTRY32 = unsafe { mem::zeroed() };
+        let mut module_entry: tlhelp32::MODULEENTRY32W = unsafe { mem::zeroed() };
+        module_entry.dwSize = mem::size_of::<tlhelp32::MODULEENTRY32>() as _;
+
+        while unsafe { tlhelp32::Module32NextW(module, &mut module_entry) } != 0 {
+            let name = OsString::from_wide(&module_entry.szModule[..]).into_string();
+            let name = match name {
+                Ok(s) => s,
+                Err(_) => {
+                    eprintln!("Failed to convert OsString to String.");
+                    continue;
+                },
+            };
+            if name.contains(module_name) {
+                unsafe { handleapi::CloseHandle(module) };
+                return Ok(Module {
+                    base_address: module_entry.modBaseAddr as _,
+                    size: module_entry.modBaseSize as _,
+                });
+            }
+        }
+        Err("Failed to find module.")
     }
 }
