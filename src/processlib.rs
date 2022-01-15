@@ -106,4 +106,21 @@ impl Module {
 
         Ok(read)
     }
+
+    pub fn write<T>(&self, offset: u32, value: T) -> Result<(), &'static str> {
+        let mut written: libc::size_t = 0;
+        unsafe {
+            if memoryapi::WriteProcessMemory(
+                Process::current_process().handle,
+                (self.base_address + offset) as *mut _,
+                &value as *const _ as *mut _,
+                mem::size_of::<T>() as _,
+                &mut written as *mut _,
+            ) != mem::size_of_val(&value) as i32 {
+                return Err("Failed to write memory.");
+            }
+        }
+
+        Ok(())
+    }
 }
