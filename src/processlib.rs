@@ -24,6 +24,7 @@ pub struct Thread {
 }
 
 impl Process {
+    #[no_mangle]
     pub fn current_process() -> Self {
         let mut process = Self {
             pid: 0,
@@ -33,6 +34,7 @@ impl Process {
         process
     }
 
+    #[no_mangle]
     pub fn read_memory(&self, address: u32) -> Result<u32, &'static str> {
         let mut buffer = unsafe { mem::zeroed() }; 
         let mut bytes_read: libc::size_t = 0;
@@ -52,6 +54,7 @@ impl Process {
         Ok(buffer)
     }
 
+    #[no_mangle]
     pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
         let module = unsafe { 
             tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) 
@@ -81,5 +84,26 @@ impl Process {
             }
         }
         Err("Failed to find module.")
+    }
+}
+
+impl Module {
+    pub fn read<T>(&self, offset: u32) -> Result<T, &'static str> {
+        let mut read = unsafe { mem::zeroed() };
+        let mut amount_read: libc::size_t = 0;
+
+        unsafe {
+            if memoryapi::ReadProcessMemory(
+                Process::current_process().handle,
+                (self.base_address + offset) as *mut _,
+                &mut read as *mut _ as *mut _,
+                mem::size_of::<T>() as _,
+                &mut amount_read as *mut _,
+            ) != (true as _) || amount_read == 0 {
+                return Err("Failed to read memory.");
+            }
+        }
+
+        Ok(read)
     }
 }
