@@ -66,11 +66,19 @@ unsafe extern "stdcall" fn rewrite_program() -> Result<(), &'static str> {
     *(0x41FDF7 as *mut u32) = 0x4B;
     *(0x41FF01 as *mut u32) = 0xEA001589;   // -> mov [0x4BEA00], edx
     *(0x41FF05 as *mut u32) = 0x4B;
+    *(0x42035E as *mut u32) = 0xEA005C7;
+    *(0x420362 as *mut u32) = 0x4B;
+    *(0x420399 as *mut u32) = 0x4BEA00A1;
+    *(0x4203A3 as *mut u32) = 0x9000;
+    *(0x421B93 as *mut u32) = 0x4BEA00A1;
+    *(0x421B97 as *mut u32) = 0x9000;
+    *(0x423EBE as *mut u32) = 0xEA003D83;   // -> cmp [0x4BEA00], 0x3
+    *(0x423EC2 as *mut u32) = 0x4B;
 
     if memoryapi::VirtualProtect(
         0x401000 as *mut _,
         0x9E000 as _,
-        PAGE_EXECUTE_READ,
+        oldp,
         &mut oldp as *mut _,
     ) != 0 {
         return Err("Failed to change memory protection.");
