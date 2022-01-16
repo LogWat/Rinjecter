@@ -40,35 +40,33 @@ pub extern "stdcall" fn DllMain(
     }
 }
 
-extern "stdcall" fn rewrite_program() -> Result<(), &'static str> {
+unsafe extern "stdcall" fn rewrite_program() -> Result<(), &'static str> {
     let mut oldp: DWORD = 0;
-    if unsafe { memoryapi::VirtualProtect(
+    if memoryapi::VirtualProtect(
         0x401000 as *mut _,
         0x9E000 as _,
         PAGE_READWRITE,
         &mut oldp as *mut _,
-    ) } != 0 {
+    ) != 0 {
         return Err("Failed to change memory protection.");
     }
 
     // rewrite program
-    unsafe {
-        *(0x41DBD4 as *mut u32) = 0x4BEA00A1;   // mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
-        *(0x41DBD8 as *mut u32) = 0x9000;       // nop
-        *(0x41DF21 as *mut u32) = 0x4BEA00A1;   // mov eax, [0x4BEA00]
-        *(0x41DF25 as *mut u32) = 0x9000;       // nop
-        *(0x41F9E7 as *mut u32) = 0x4BEA00A1;   // mov eax, [0x4BEA00]
-        *(0x41F9EB as *mut u32) = 0x9000;       // nop
-        *(0x41FC8D as *mut u32) = 0xEA0005C7;    
-        *(0x41FC91 as *mut u32) = 0x4B;         // mov eax, [0x4BEA00]
-    }
+    *(0x41DBD4 as *mut u32) = 0x4BEA00A1;   // mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
+    *(0x41DBD8 as *mut u32) = 0x9000;       // nop
+    *(0x41DF21 as *mut u32) = 0x4BEA00A1;   // mov eax, [0x4BEA00]
+    *(0x41DF25 as *mut u32) = 0x9000;       // nop
+    *(0x41F9E7 as *mut u32) = 0x4BEA00A1;   // mov eax, [0x4BEA00]
+    *(0x41F9EB as *mut u32) = 0x9000;       // nop
+    *(0x41FC8D as *mut u32) = 0xEA0005C7;    
+    *(0x41FC91 as *mut u32) = 0x4B;         // mov eax, [0x4BEA00]
 
-    if unsafe { memoryapi::VirtualProtect(
+    if memoryapi::VirtualProtect(
         0x401000 as *mut _,
         0x9E000 as _,
         PAGE_EXECUTE_READ,
         &mut oldp as *mut _,
-    ) } != 0 {
+    ) != 0 {
         return Err("Failed to change memory protection.");
     }
     
