@@ -60,23 +60,22 @@ impl Process {
         Ok(meminfo.Protect)
     }
 
-    pub fn read_memory(&self, address: u32) -> Result<u32, &'static str> {
-        let mut buffer = unsafe { mem::zeroed() }; 
-        let mut bytes_read: libc::size_t = 0;
-        unsafe {
-            if memoryapi::ReadProcessMemory(
-                self.handle,
-                address as *mut _,
-                &mut buffer as *mut _ as *mut _,
-                mem::size_of::<u32>() as _,
-                &mut bytes_read as *mut _,
-            ) != (true as _) || bytes_read == 0 {
-                mem::forget(buffer);
-                return Err("Failed to read memory.");
+    pub unsafe fn read<T>(&self, address: u32) -> Result<&T, &'static str> {
+        match self.check_protection(address) {
+            Ok(protect) => {
+                match protect {
+                    winnt::PAGE_READWRITE | winnt::PAGE_EXECUTE_READWRITE => {
+                        return Ok(&*(address as *const T));
+                    },
+                    _ => {
+                        return Err("Failed to read memory.\nMemory is not readable.");
+                    }
+                };
+            },
+            Err(err) => {
+                return Err(err);
             }
         }
-
-        Ok(buffer)
     }
 
     pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
@@ -112,16 +111,12 @@ impl Process {
 }
 
 impl Module {
-    #[no_mangle]
-    pub fn fix_offset(&self, offset: u32) -> u32 {
-        self.base_address + offset
+
+    pub unsafe fn read<T>(&self, address: u32) -> &T {
+        &*(address as *const T)
     }
 
-    pub unsafe fn read<T>(&self, offset: u32) -> &T {
-        &*(self.fix_offset(offset) as *const T)
-    }
-
-    pub unsafe fn write<T>(&self, offset: u32, value: T) {
-        *(self.fix_offset(offset) as *mut T) = value;
+    pub unsafe fn write<T>(&self, address: u32, value: T) {
+        *(address as *mut T) = value;
     }
 }
