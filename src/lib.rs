@@ -74,6 +74,8 @@ unsafe extern "stdcall" fn rewrite_program() -> Result<(), &'static str> {
     *(0x421B97 as *mut u32) = 0x9000;
     *(0x423EBE as *mut u32) = 0xEA003D83;   // -> cmp [0x4BEA00], 0x3
     *(0x423EC2 as *mut u32) = 0x4B;
+    *(0x42E1D4 as *mut u32) = 0xEA001589;
+    *(0x42E1D8 as *mut u32) = 0x4B;
 
     if memoryapi::VirtualProtect(
         0x401000 as *mut _,
