@@ -40,6 +40,35 @@ pub extern "stdcall" fn DllMain(
     }
 }
 
+extern "stdcall" fn rewrite_program() -> Result<(), &'static str> {
+    let mut oldp: DWORD = 0;
+    if unsafe { memoryapi::VirtualProtect(
+        0x401000 as *mut _,
+        0x9E000 as _,
+        PAGE_READWRITE,
+        &mut oldp as *mut _,
+    ) } != 0 {
+        return Err("Failed to change memory protection.");
+    }
+
+    // rewrite program
+    unsafe {
+        *(0x41DBD4 as *mut u32) = 0x4BEA00A1;   // mov 
+        *(0x41DBD8 as *mut u32) = 0x9000;       // nop
+    }
+
+    if unsafe { memoryapi::VirtualProtect(
+        0x401000 as *mut _,
+        0x9E000 as _,
+        PAGE_EXECUTE_READ,
+        &mut oldp as *mut _,
+    ) } != 0 {
+        return Err("Failed to change memory protection.");
+    }
+    
+    Ok(())
+}
+
 // 生ポインタの利用 *mut or *const
 unsafe extern "stdcall" fn changedisplayname() -> bool {
 
