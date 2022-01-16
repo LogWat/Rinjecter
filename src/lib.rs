@@ -6,13 +6,11 @@ extern crate winapi;
 mod processlib;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, memoryapi, libloaderapi};
+use winapi::um::{winnt::*, libloaderapi};
 use winapi::shared::minwindef::*;
 
 use processlib::Process;
 
-use std::{mem};
-use std::convert::TryInto;
 use rand::Rng;
 
 const DPATH: u32 = 0x4B5B4C;
@@ -43,52 +41,36 @@ pub extern "stdcall" fn DllMain(
     }
 }
 
-unsafe extern "stdcall" fn rewrite_program() -> Result<(), &'static str> {
-    let mut oldp: DWORD = 0;
-    if memoryapi::VirtualProtect(
-        0x401000 as *mut _,
-        0x9E000 as _,
-        PAGE_READWRITE,
-        &mut oldp as *mut _,
-    ) != 0 {
-        return Err("Failed to change memory protection.");
-    }
-
+unsafe extern "stdcall" fn overwrite(process: Process) -> Result<(), &'static str> {
+        
     // rewrite program
-    *(0x41DBD4 as *mut u32) = 0x4BEA00A1;   // -> mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
-    *(0x41DBD8 as *mut u32) = 0x9000;       // -> nop
-    *(0x41DF21 as *mut u32) = 0x4BEA00A1;
-    *(0x41DF25 as *mut u32) = 0x9000;
-    *(0x41F9E7 as *mut u32) = 0x4BEA00A1;
-    *(0x41F9EB as *mut u32) = 0x9000;
-    *(0x41FC8D as *mut u32) = 0xEA0005C7;    
-    *(0x41FC91 as *mut u32) = 0x4B;         // -> mov [0x4BEA00], 0x1
-    *(0x41DF76 as *mut u32) = 0xEA0005C7;
-    *(0x41DF7A as *mut u32) = 0x4B;
-    *(0x41FDF3 as *mut u32) = 0xEA0005C7;
-    *(0x41FDF7 as *mut u32) = 0x4B;
-    *(0x41FF01 as *mut u32) = 0xEA001589;   // -> mov [0x4BEA00], edx
-    *(0x41FF05 as *mut u32) = 0x4B;
-    *(0x42035E as *mut u32) = 0xEA005C7;
-    *(0x420362 as *mut u32) = 0x4B;
-    *(0x420399 as *mut u32) = 0x4BEA00A1;
-    *(0x4203A3 as *mut u32) = 0x9000;
-    *(0x421B93 as *mut u32) = 0x4BEA00A1;
-    *(0x421B97 as *mut u32) = 0x9000;
-    *(0x423EBE as *mut u32) = 0xEA003D83;   // -> cmp [0x4BEA00], 0x3
-    *(0x423EC2 as *mut u32) = 0x4B;
-    *(0x42E1D4 as *mut u32) = 0xEA001589;
-    *(0x42E1D8 as *mut u32) = 0x4B;
+    Process::write(&process, 0x41DBD4, 0x4BEA00A1).unwrap();     // -> mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
+    Process::write(&process, 0x41DBD8, 0x9000).unwrap();         // -> nop
+    Process::write(&process, 0x41DF21, 0x4BEA00A1 as u32).unwrap();
+    Process::write(&process, 0x41DF25, 0x9000 as u32).unwrap();
+    Process::write(&process, 0x41F9E7, 0x4BEA00A1 as u32).unwrap();
+    Process::write(&process, 0x41F9EB, 0x9000 as u32).unwrap();
+    Process::write(&process, 0x41FC8D, 0xEA0005C7 as u32).unwrap();
+    Process::write(&process, 0x41FC91, 0x4B as u32).unwrap();           // -> mov [0x4BEA00], 0x1
+    Process::write(&process, 0x41DF76, 0xEA0005C7 as u32).unwrap();
+    Process::write(&process, 0x41DF7A, 0x4B as u32).unwrap();
+    Process::write(&process, 0x41FDF3, 0xEA0005C7 as u32).unwrap();
+    Process::write(&process, 0x41FDF7, 0x4B as u32).unwrap();
+    Process::write(&process, 0x41FF01, 0xEA001589 as u32).unwrap();
+    Process::write(&process, 0x41FF05, 0x4B as u32).unwrap();           // -> mov [0x4BEA00], edx
+    Process::write(&process, 0x42035E, 0xEA005C7 as u32).unwrap();
+    Process::write(&process, 0x420362, 0x4B as u32).unwrap();
+    Process::write(&process, 0x420399, 0x4BEA00A1 as u32).unwrap();
+    Process::write(&process, 0x4203A3, 0x9000 as u32).unwrap();
+    Process::write(&process, 0x421B93, 0x4BEA00A1 as u32).unwrap();
+    Process::write(&process, 0x421B97, 0x9000 as u32).unwrap();
+    Process::write(&process, 0x423EBE, 0xEA003D83 as u32).unwrap();     // -> cmp [0x4BEA00], 0x3
+    Process::write(&process, 0x423EC2, 0x4B as u32).unwrap();
+    Process::write(&process, 0x42E1D4, 0xEA001589 as u32).unwrap();
+    Process::write(&process, 0x42E1D8, 0x4B as u32).unwrap();
+    Process::write(&process, 0x42E8CA, 0xEA000D8B as u32).unwrap();
+    Process::write(&process, 0x42E8CE, 0x4B as u32).unwrap();
 
-    if memoryapi::VirtualProtect(
-        0x401000 as *mut _,
-        0x9E000 as _,
-        oldp,
-        &mut oldp as *mut _,
-    ) != 0 {
-        return Err("Failed to change memory protection.");
-    }
-    
     Ok(())
 }
 
