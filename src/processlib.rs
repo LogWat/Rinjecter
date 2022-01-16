@@ -36,7 +36,8 @@ impl Process {
 
     // 別にExにする必要は無いけど一応汎用性を持たせるために
     // 他のプロセスに対しても使えるようにしておく
-    pub fn check_protection(&self, address: u32) -> Result<minwindef::DWORD, &'static str> {
+    #[allow(dead_code)]
+    fn check_protection(&self, address: u32) -> Result<minwindef::DWORD, &'static str> {
         let mut meminfo = winnt::MEMORY_BASIC_INFORMATION {
             BaseAddress: address as *mut _,
             AllocationBase: address as *mut _,
