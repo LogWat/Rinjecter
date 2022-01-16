@@ -111,7 +111,31 @@ impl Process {
                         return Ok(());
                     },
                     _ => {
-                        return Err("Failed to write memory.\nMemory is not writable.");
+                        let mut oldp: minwindef::DWORD = 0;
+
+                        if memoryapi::VirtualProtectEx(
+                            self.handle,
+                            address as *mut _,
+                            mem::size_of::<T>() as _,
+                            winnt::PAGE_READWRITE,
+                            &mut oldp as *mut _,
+                        ) == 0 {
+                            return Err("Failed to change memory protection.");
+                        }
+
+                        *(address as *mut T) = value;
+
+                        if memoryapi::VirtualProtectEx(
+                            self.handle,
+                            address as *mut _,
+                            mem::size_of::<T>() as _,
+                            oldp,
+                            &mut oldp as *mut _,
+                        ) == 0 {
+                            return Err("Failed to change memory protection.");
+                        }
+
+                        return Ok(());
                     }
                 };
             },
