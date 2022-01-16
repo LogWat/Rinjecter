@@ -9,6 +9,8 @@ use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, memoryapi, libloaderapi};
 use winapi::shared::minwindef::*;
 
+use processlib::Process;
+
 use std::{mem};
 use std::convert::TryInto;
 use rand::Rng;
@@ -26,6 +28,7 @@ pub extern "stdcall" fn DllMain(
         DLL_PROCESS_ATTACH => {
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
+                let mut process = Process::current_process();
                 if changedisplayname() == false {
                     let errtext = "Failed to change display name.\0".to_string();
                     err_msgbox(errtext);
