@@ -5,6 +5,7 @@ use winapi::shared::minwindef;
 
 #[derive(Getters)]
 #[get = "pub"]
+#[repr(C)]
 pub struct Process {
     pub pid: u32,
     pub handle: winnt::HANDLE,
