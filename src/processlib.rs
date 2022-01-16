@@ -34,8 +34,7 @@ impl Process {
         process
     }
 
-    // 別にExにする必要は無いけど一応汎用性を持たせるために
-    // 他のプロセスに対しても使えるようにしておく
+    // Exにする必要は無いけど一応他のプロセスに対しても使えるようにしておく
     #[allow(dead_code)]
     fn check_protection(&self, address: u32) -> Result<minwindef::DWORD, &'static str> {
         let mut meminfo = winnt::MEMORY_BASIC_INFORMATION {
@@ -69,7 +68,29 @@ impl Process {
                         return Ok(&*(address as *const T));
                     },
                     _ => {
-                        return Err("Failed to read memory.\nMemory is not readable.");
+                        let mut oldp: minwindef::DWORD = 0;
+
+                        if memoryapi::VirtualProtect(
+                            address as *mut _,
+                            mem::size_of::<T>() as _,
+                            winnt::PAGE_READWRITE,
+                            &mut oldp as *mut _,
+                        ) == 0 {
+                            return Err("Failed to change memory protection.");
+                        }
+
+                        let result = &*(address as *const T);
+
+                        if memoryapi::VirtualProtect(
+                            address as *mut _,
+                            mem::size_of::<T>() as _,
+                            oldp,
+                            &mut oldp as *mut _,
+                        ) == 0 {
+                            return Err("Failed to change memory protection.");
+                        }
+
+                        return Ok(result);
                     }
                 };
             },
