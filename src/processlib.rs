@@ -79,6 +79,25 @@ impl Process {
         }
     }
 
+    pub unsafe fn write<T>(&self, address: u32, value: T) -> Result<(), &'static str> {
+        match self.check_protection(address) {
+            Ok(protect) => {
+                match protect {
+                    winnt::PAGE_READWRITE | winnt::PAGE_EXECUTE_READWRITE => {
+                        *(address as *mut T) = value;
+                        return Ok(());
+                    },
+                    _ => {
+                        return Err("Failed to write memory.\nMemory is not writable.");
+                    }
+                };
+            },
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
+
     pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
         let module = unsafe { 
             tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) 
