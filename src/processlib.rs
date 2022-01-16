@@ -70,7 +70,8 @@ impl Process {
                     _ => {
                         let mut oldp: minwindef::DWORD = 0;
 
-                        if memoryapi::VirtualProtect(
+                        if memoryapi::VirtualProtectEx(
+                            self.handle,
                             address as *mut _,
                             mem::size_of::<T>() as _,
                             winnt::PAGE_READWRITE,
@@ -81,7 +82,8 @@ impl Process {
 
                         let result = &*(address as *const T);
 
-                        if memoryapi::VirtualProtect(
+                        if memoryapi::VirtualProtectEx(
+                            self.handle,
                             address as *mut _,
                             mem::size_of::<T>() as _,
                             oldp,
