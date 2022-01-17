@@ -29,7 +29,7 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x42035E, rb1[2]).unwrap();
     Process::write(process, 0x420362, rb2[1]).unwrap();
     Process::write(process, 0x420399, rb1[0]).unwrap();
-    Process::write(process, 0x4203A3, rb2[0]).unwrap();
+    Process::write(process, 0x42039D, rb2[0]).unwrap();
     Process::write(process, 0x421B93, rb1[0]).unwrap();
     Process::write(process, 0x421B97, rb2[0]).unwrap();
     Process::write(process, 0x423EBE, rb1[3]).unwrap();     // -> cmp [0x4BEA00], 0x3
