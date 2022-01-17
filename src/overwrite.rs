@@ -23,24 +23,20 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x41F9EB, rb2[0]).unwrap();
     Process::write(process, 0x41FBE1, rb1[0]).unwrap();     // mov eax, [ebp + 0xBC30] -> mov eax, [0x4BEA00]; nop
     Process::write(process, 0x41FBE5, rb2[0]).unwrap();
-
     Process::write(process, 0x41FC8D, rb1[1]).unwrap();     // mov [eax + 0xBC30], 0x1 -> mov [0x4BEA00], 0x1
     Process::write(process, 0x41FC91, rb2[1]).unwrap();
     Process::write(process, 0x41FD76, rb1[1]).unwrap();     // mov [ecx + 0xBC30], 0x2 -> mov [0x4BEA01], 0x2
     Process::write(process, 0x41FD7A, rb2[1]).unwrap();
     Process::write(process, 0x41FDF3, rb1[1]).unwrap();     // mov [ecx + 0xBC30], 0x3 -> mov [0x4BEA00], 0x3
     Process::write(process, 0x41FDF7, rb2[1]).unwrap();
-
     Process::write(process, 0x41FF01, rb1[2]).unwrap();     // mov [ecx + 0xBC30], edx -> mov [0x4BEA00], edx
     Process::write(process, 0x41FF05, rb2[1]).unwrap();
     Process::write(process, 0x42035E, rb1[1]).unwrap();     // mov [ecx + 0xBC30], 0x4 -> mov [0x4BEA01], 0x4
     Process::write(process, 0x420362, rb2[1]).unwrap();
-
     Process::write(process, 0x420399, rb1[0]).unwrap();     // mov eax, [ecx + 0xBC30] -> mov eax, [0x4BEA00]; nop
     Process::write(process, 0x42039D, rb2[0]).unwrap();
     Process::write(process, 0x421B93, rb1[0]).unwrap();     // mov eax, [ecx + 0xBC30] -> mov eax, [0x4BEA00]; nop
     Process::write(process, 0x421B97, rb2[0]).unwrap();
-
     Process::write(process, 0x423EBE, rb1[3]).unwrap();     // cmp [ecx + 0xBC30], 0x3 -> cmp [0x4BEA00], 0x3
     Process::write(process, 0x423EC2, rb2[1]).unwrap();
     Process::write(process, 0x42E1D4, rb1[2]).unwrap();     // mov [ecx + 0xBC30], edx -> mov [0x4BEA00], edx
@@ -59,8 +55,7 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x440D99, rb2[0]).unwrap();
     Process::write(process, 0x441274, rb1[3]).unwrap();     // cmp [ecx + 0xBC30], 0x2 -> cmp [0x4BEA00], 0x2
     Process::write(process, 0x441278, rb2[1]).unwrap();
-
-    Process::write(process, 0x47BF1D, rb1[5]).unwrap();    // mov edx, [eax + 0xBC30] -> mov edx, [0x4BEA00]
+    Process::write(process, 0x47BF1D, rb1[5]).unwrap();     // mov edx, [eax + 0xBC30] -> mov edx, [0x4BEA00]
     Process::write(process, 0x47BF21, rb2[1]).unwrap();
 
     // Evacuate the WinFlag storage location
@@ -74,7 +69,6 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x41F9BD, rb1[7]).unwrap();    // mov [edx + 0xBC34], 0x0 -> mov [0x4BEA04], 0x0
     Process::write(process, 0x41F9C1, rb2[1]).unwrap();
     Process::write(process, 0x41F9C5, 0x0 as u16).unwrap();
-
     Process::write(process, 0x4204A8, rb1[9]).unwrap();    // mov edx, [ecx + 0xBC34] -> mov edx, [0x4BEA04]
     Process::write(process, 0x4204AC, rb2[1]).unwrap();
     Process::write(process, 0x420518, rb1[10]).unwrap();   // mov eax, [ecx + 0xBC34] -> mov eax, [0x4BEA04]
@@ -85,13 +79,15 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x420563, rb2[1]).unwrap();
     Process::write(process, 0x42DAB7, rb1[9]).unwrap();    // mov edx, [ecx + 0xBC34] -> mov edx, [0x4BEA04]
     Process::write(process, 0x42DABB, rb2[1]).unwrap();
-    Process::write(process, 0x42E1DF, rb1[12]).unwrap();   // -> mov [0x4BEA00], edx
+    Process::write(process, 0x42E1DF, rb1[12]).unwrap();   // mov [eax + 0xBC34], edx -> mov [0x4BEA04], edx
     Process::write(process, 0x42E1E3, rb2[1]).unwrap();
-    Process::write(process, 0x42E8B5, rb1[10]).unwrap();
+    Process::write(process, 0x42E8B5, rb1[10]).unwrap();   // mov eax, [eax + 0xBC34] -> mov eax, [0x4BEA04]
     Process::write(process, 0x42E8B9, rb2[0]).unwrap();
-    Process::write(process, 0x42E90D, rb1[11]).unwrap();
+    Process::write(process, 0x42E90D, rb1[11]).unwrap();   // mov ecx, [esi + 0xBC34] -> mov ecx, [0x4BEA04]
     Process::write(process, 0x42E911, rb2[1]).unwrap();
-    Process::write(process, 0x41DD98, rb1[13]).unwrap();   // -> cmp [0x4BEA00], 0x3
+
+    // Evacuate the eog storage location
+    Process::write(process, 0x41DD98, rb1[13]).unwrap();   // cmp [ebp + 0xBC38], 0x3 -> cmp [0x4BEA08], 0x3
     Process::write(process, 0x41DD9C, rb2[1]).unwrap();
     Process::write(process, 0x41DD9E, 0x3 as u8).unwrap();
     Process::write(process, 0x41DF50, rb1[14]).unwrap();   // -> mov eax, [0x4BEA00]
