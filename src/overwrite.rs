@@ -13,7 +13,7 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
         
     // rewrite program
 
-    // Evacuate the RoundState stroage location.
+    // Evacuate the RoundState stroage location
     Process::write(process, 0x41DBD4, rb1[0]).unwrap();     // mov eax, [ebp + 0xBC30] -> mov eax, [0x4BEA00]; nop
     Process::write(process, 0x41DBD8, rb2[0]).unwrap();     // ( ebp + 0xBC30 == RoundState )
     Process::write(process, 0x41DF21, rb1[0]).unwrap();     // mov eax, [ebp + 0xBC30] -> mov eax, [0x4BEA00]; nop
@@ -58,12 +58,15 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x440D99, rb2[0]).unwrap();
     Process::write(process, 0x441274, rb1[3]).unwrap();     // cmp [ecx + 0xBC30], 0x2 -> cmp [0x4BEA00], 0x2
     Process::write(process, 0x441278, rb2[1]).unwrap();
-    Process::write(process, 0x47BF1D, rb1[5]).unwrap();    // -> mov edx, [0x4BEA00]
+
+    Process::write(process, 0x47BF1D, rb1[5]).unwrap();    // mov edx, [eax + 0xBC30] -> mov edx, [0x4BEA00]
     Process::write(process, 0x47BF21, rb2[1]).unwrap();
-    Process::write(process, 0x41F8CE, rb1[7]).unwrap();    // -> mov [0x4BEA00], 0x0
+
+    // Evacuate the WinFlag storage location
+    Process::write(process, 0x41F8CE, rb1[7]).unwrap();    // mov [eax + 0xBC34], 0x0 -> mov [0x4BEA04], 0x0
     Process::write(process, 0x41F8D2, rb2[1]).unwrap();
     Process::write(process, 0x41F8D6, 0x0 as u16).unwrap();
-    Process::write(process, 0x41F8ED, rb1[6]).unwrap();    // -> mov [0x4BEA00], esi
+    Process::write(process, 0x41F8ED, rb1[6]).unwrap();    // mov [ecx + 0xBC34], esi -> mov [0x4BEA04], esi
     Process::write(process, 0x41F8F1, rb2[1]).unwrap();
     Process::write(process, 0x41F90D, rb1[8]).unwrap();    // -> mov [0x4BEA00], eax
     Process::write(process, 0x41F911, rb2[0]).unwrap();    // -> nop
