@@ -44,8 +44,8 @@ pub extern "stdcall" fn DllMain(
 unsafe extern "stdcall" fn overwrite(process: Process) -> Result<(), &'static str> {
         
     // rewrite program
-    Process::write(&process, 0x41DBD4, 0x4BEA00A1).unwrap();     // -> mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
-    Process::write(&process, 0x41DBD8, 0x9000).unwrap();         // -> nop
+    Process::write(&process, 0x41DBD4, 0x4BEA00A1 as u32).unwrap();     // -> mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
+    Process::write(&process, 0x41DBD8, 0x9000 as u32).unwrap();         // -> nop
     Process::write(&process, 0x41DF21, 0x4BEA00A1 as u32).unwrap();
     Process::write(&process, 0x41DF25, 0x9000 as u32).unwrap();
     Process::write(&process, 0x41F9E7, 0x4BEA00A1 as u32).unwrap();
@@ -68,8 +68,12 @@ unsafe extern "stdcall" fn overwrite(process: Process) -> Result<(), &'static st
     Process::write(&process, 0x423EC2, 0x4B as u32).unwrap();
     Process::write(&process, 0x42E1D4, 0xEA001589 as u32).unwrap();
     Process::write(&process, 0x42E1D8, 0x4B as u32).unwrap();
-    Process::write(&process, 0x42E8CA, 0xEA000D8B as u32).unwrap();
+    Process::write(&process, 0x42E8CA, 0xEA000D8B as u32).unwrap();     // -> mov ecx, [0x4BEA00]
     Process::write(&process, 0x42E8CE, 0x4B as u32).unwrap();
+    Process::write(&process, 0x434A58, 0xEA003D83 as u32).unwrap();
+    Process::write(&process, 0x434A5C, 0x4B as u32).unwrap();
+    Process::write(&process, 0x43A762, 0xEA003D83 as u32).unwrap();
+    Process::write(&process, 0x43A766, 0x4B as u32).unwrap();
 
     Ok(())
 }
