@@ -42,38 +42,41 @@ pub extern "stdcall" fn DllMain(
 }
 
 unsafe extern "stdcall" fn overwrite(process: Process) -> Result<(), &'static str> {
+
+    let rb1: [u32; 5] = [0x4BEA00A1, 0xEA0005C7, 0xEA001589, 0xEA003D83, 0xEA000D8B];
+    let rb2: [u32; 2] = [0x9000, 0x4B];
         
     // rewrite program
-    Process::write(&process, 0x41DBD4, 0x4BEA00A1 as u32).unwrap();     // -> mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
-    Process::write(&process, 0x41DBD8, 0x9000 as u32).unwrap();         // -> nop
-    Process::write(&process, 0x41DF21, 0x4BEA00A1 as u32).unwrap();
-    Process::write(&process, 0x41DF25, 0x9000 as u32).unwrap();
-    Process::write(&process, 0x41F9E7, 0x4BEA00A1 as u32).unwrap();
-    Process::write(&process, 0x41F9EB, 0x9000 as u32).unwrap();
-    Process::write(&process, 0x41FC8D, 0xEA0005C7 as u32).unwrap();
-    Process::write(&process, 0x41FC91, 0x4B as u32).unwrap();           // -> mov [0x4BEA00], 0x1
-    Process::write(&process, 0x41DF76, 0xEA0005C7 as u32).unwrap();
-    Process::write(&process, 0x41DF7A, 0x4B as u32).unwrap();
-    Process::write(&process, 0x41FDF3, 0xEA0005C7 as u32).unwrap();
-    Process::write(&process, 0x41FDF7, 0x4B as u32).unwrap();
-    Process::write(&process, 0x41FF01, 0xEA001589 as u32).unwrap();
-    Process::write(&process, 0x41FF05, 0x4B as u32).unwrap();           // -> mov [0x4BEA00], edx
-    Process::write(&process, 0x42035E, 0xEA005C7 as u32).unwrap();
-    Process::write(&process, 0x420362, 0x4B as u32).unwrap();
-    Process::write(&process, 0x420399, 0x4BEA00A1 as u32).unwrap();
-    Process::write(&process, 0x4203A3, 0x9000 as u32).unwrap();
-    Process::write(&process, 0x421B93, 0x4BEA00A1 as u32).unwrap();
-    Process::write(&process, 0x421B97, 0x9000 as u32).unwrap();
-    Process::write(&process, 0x423EBE, 0xEA003D83 as u32).unwrap();     // -> cmp [0x4BEA00], 0x3
-    Process::write(&process, 0x423EC2, 0x4B as u32).unwrap();
-    Process::write(&process, 0x42E1D4, 0xEA001589 as u32).unwrap();
-    Process::write(&process, 0x42E1D8, 0x4B as u32).unwrap();
-    Process::write(&process, 0x42E8CA, 0xEA000D8B as u32).unwrap();     // -> mov ecx, [0x4BEA00]
-    Process::write(&process, 0x42E8CE, 0x4B as u32).unwrap();
-    Process::write(&process, 0x434A58, 0xEA003D83 as u32).unwrap();
-    Process::write(&process, 0x434A5C, 0x4B as u32).unwrap();
-    Process::write(&process, 0x43A762, 0xEA003D83 as u32).unwrap();
-    Process::write(&process, 0x43A766, 0x4B as u32).unwrap();
+    Process::write(&process, 0x41DBD4, rb1[0]).unwrap();     // -> mov eax, [0x4BEA00] ([0x4BEA00] = 0x0)
+    Process::write(&process, 0x41DBD8, rb2[0]).unwrap();     // -> nop
+    Process::write(&process, 0x41DF21, rb1[0]).unwrap();
+    Process::write(&process, 0x41DF25, rb2[0]).unwrap();
+    Process::write(&process, 0x41F9E7, rb1[0]).unwrap();
+    Process::write(&process, 0x41F9EB, rb2[0]).unwrap();
+    Process::write(&process, 0x41FC8D, rb1[1]).unwrap();
+    Process::write(&process, 0x41FC91, rb2[1]).unwrap();     // -> mov [0x4BEA00], 0x1
+    Process::write(&process, 0x41DF76, rb1[1]).unwrap();
+    Process::write(&process, 0x41DF7A, rb2[1]).unwrap();
+    Process::write(&process, 0x41FDF3, rb1[1]).unwrap();
+    Process::write(&process, 0x41FDF7, rb2[1]).unwrap();
+    Process::write(&process, 0x41FF01, rb1[2]).unwrap();
+    Process::write(&process, 0x41FF05, rb2[1]).unwrap();     // -> mov [0x4BEA00], edx
+    Process::write(&process, 0x42035E, rb1[2]).unwrap();
+    Process::write(&process, 0x420362, rb2[1]).unwrap();
+    Process::write(&process, 0x420399, rb1[0]).unwrap();
+    Process::write(&process, 0x4203A3, rb2[0]).unwrap();
+    Process::write(&process, 0x421B93, rb1[0]).unwrap();
+    Process::write(&process, 0x421B97, rb2[0]).unwrap();
+    Process::write(&process, 0x423EBE, rb1[3]).unwrap();     // -> cmp [0x4BEA00], 0x3
+    Process::write(&process, 0x423EC2, rb2[1]).unwrap();
+    Process::write(&process, 0x42E1D4, rb1[2]).unwrap();
+    Process::write(&process, 0x42E1D8, rb2[1]).unwrap();
+    Process::write(&process, 0x42E8CA, rb1[4]).unwrap();     // -> mov ecx, [0x4BEA00]
+    Process::write(&process, 0x42E8CE, rb2[1]).unwrap();
+    Process::write(&process, 0x434A58, rb1[3]).unwrap();
+    Process::write(&process, 0x434A5C, rb2[1]).unwrap();
+    Process::write(&process, 0x43A762, rb1[3]).unwrap();
+    Process::write(&process, 0x43A766, rb2[1]).unwrap();
 
     Ok(())
 }
