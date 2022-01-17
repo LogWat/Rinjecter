@@ -2,12 +2,13 @@ use crate::processlib::Process;
 
 pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'static str> {
 
-    let rb1: [u32; 20] = [
+    let rb1: [u32; 21] = [
         0x4BEA00A1, 0xEA0005C7, 0xEA001589, 0xEA003D83, 
         0xEA000D8B, 0xEA00158B, 0xEA043589, 0xEA0405C7,
         0xEA04358B, 0xEA04158B, 0x4BEA04A1, 0xEA040D8B,
         0xEA041589, 0xEA083D83, 0x4BEA08A1, 0xEA083589,
-        0xEA0805C7, 0x4BEA08A3, 0xEA081589, 0xEA081589
+        0xEA0805C7, 0x4BEA08A3, 0xEA081589, 0xEA081589,
+        0x3BEA04A3
         ];
     let rb2: [u16; 2] = [0x9000, 0x4B];
         
@@ -68,20 +69,21 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x41F8D6, 0x0 as u16).unwrap();
     Process::write(process, 0x41F8ED, rb1[6]).unwrap();    // mov [ecx + 0xBC34], esi -> mov [0x4BEA04], esi
     Process::write(process, 0x41F8F1, rb2[1]).unwrap();
-    Process::write(process, 0x41F90D, rb1[8]).unwrap();    // -> mov [0x4BEA00], eax
-    Process::write(process, 0x41F911, rb2[0]).unwrap();    // -> nop
-    Process::write(process, 0x41F9BD, rb1[7]).unwrap();
+    Process::write(process, 0x41F90D, rb1[20]).unwrap();   // mov [edx + 0xBC34], eax -> mov [0x4BEA04], eax; nop
+    Process::write(process, 0x41F911, rb2[0]).unwrap();
+    Process::write(process, 0x41F9BD, rb1[7]).unwrap();    // mov [edx + 0xBC34], 0x0 -> mov [0x4BEA04], 0x0
     Process::write(process, 0x41F9C1, rb2[1]).unwrap();
     Process::write(process, 0x41F9C5, 0x0 as u16).unwrap();
-    Process::write(process, 0x4204A8, rb1[9]).unwrap();    // -> mov edx, [0x4BEA00]
+
+    Process::write(process, 0x4204A8, rb1[9]).unwrap();    // mov edx, [ecx + 0xBC34] -> mov edx, [0x4BEA04]
     Process::write(process, 0x4204AC, rb2[1]).unwrap();
-    Process::write(process, 0x420518, rb1[10]).unwrap();   // -> mov eax, [0x4BEA00]
-    Process::write(process, 0x420524, rb2[0]).unwrap();    // -> nop
-    Process::write(process, 0x420535, rb1[11]).unwrap();   // -> mov ecx, [0x4BEA00]
+    Process::write(process, 0x420518, rb1[10]).unwrap();   // mov eax, [ecx + 0xBC34] -> mov eax, [0x4BEA04]
+    Process::write(process, 0x42051C, rb2[0]).unwrap();
+    Process::write(process, 0x420535, rb1[11]).unwrap();   // mov ecx, [eax + 0xBC34] -> mov ecx, [0x4BEA04]
     Process::write(process, 0x420539, rb2[1]).unwrap();
-    Process::write(process, 0x42055F, rb1[8]).unwrap();    // -> mov esi, [0x4BEA00]
+    Process::write(process, 0x42055F, rb1[8]).unwrap();    // mov esi, [ecx + 0xBC34] -> mov esi, [0x4BEA04]
     Process::write(process, 0x420563, rb2[1]).unwrap();
-    Process::write(process, 0x42DAB7, rb1[9]).unwrap();    // -> mov eax, [0x4BEA00]
+    Process::write(process, 0x42DAB7, rb1[9]).unwrap();    // mov edx, [ecx + 0xBC34] -> mov edx, [0x4BEA04]
     Process::write(process, 0x42DABB, rb2[1]).unwrap();
     Process::write(process, 0x42E1DF, rb1[12]).unwrap();   // -> mov [0x4BEA00], edx
     Process::write(process, 0x42E1E3, rb2[1]).unwrap();
