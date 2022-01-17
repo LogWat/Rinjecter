@@ -43,12 +43,12 @@ pub extern "stdcall" fn DllMain(
 
 unsafe extern "stdcall" fn overwrite(process: Process) -> Result<(), &'static str> {
 
-    let rb1: [u32; 18] = [
+    let rb1: [u32; 20] = [
         0x4BEA00A1, 0xEA0005C7, 0xEA001589, 0xEA003D83, 
         0xEA000D8B, 0xEA00158B, 0xEA043589, 0xEA0405C7,
         0xEA04358B, 0xEA04158B, 0x4BEA04A1, 0xEA040D8B,
         0xEA041589, 0xEA083D83, 0x4BEA08A1, 0xEA083589,
-        0xEA0805C7, 0x4BEA08A3
+        0xEA0805C7, 0x4BEA08A3, 0xEA081589, 0xEA081539
         ];
     let rb2: [u32; 3] = [0x9000, 0x4B, 0x1004B];
         
@@ -131,6 +131,22 @@ unsafe extern "stdcall" fn overwrite(process: Process) -> Result<(), &'static st
     Process::write(&process, 0x41F8E5, 0x0 as u32).unwrap();
     Process::write(&process, 0x41F901, rb1[17]).unwrap();   // -> mov [0x4BEA00], eax
     Process::write(&process, 0x41F905, rb2[0]).unwrap();    // -> nop
+    Process::write(&process, 0x41F92F, rb1[18]).unwrap();   // -> mov [0x4BEA00], edx
+    Process::write(&process, 0x41F933, rb2[1]).unwrap();
+    Process::write(&process, 0x41FECC, rb1[17]).unwrap();
+    Process::write(&process, 0x41FED0, rb2[0]).unwrap();
+    Process::write(&process, 0x41FF1C, rb1[19]).unwrap();   // -> cmp [0x4BEA00], edx
+    Process::write(&process, 0x41FF20, rb2[1]).unwrap();
+    Process::write(&process, 0x41FF86, rb1[14]).unwrap();
+    Process::write(&process, 0x41FF8A, rb2[0]).unwrap();
+    Process::write(&process, 0x41FFEA, rb1[13]).unwrap();
+    Process::write(&process, 0x41FFEE, rb2[1]).unwrap();
+    Process::write(&process, 0x41FFF0, 0x3 as u32).unwrap();
+    Process::write(&process, 0x42E1EB, rb1[19]).unwrap();
+    Process::write(&process, 0x42E1EF, rb2[1]).unwrap();
+    Process::write(&process, 0x44152C, 0x90909090 as u32).unwrap();     // -> nop nop nop nop
+    Process::write(&process, 0x44152C + 0x4, 0xEB90 as u32).unwrap();   // -> nop
+    Process::write(&process, 0x44152C + 0x2, 0x2C as u32).unwrap();     // -> jmp 0x44155F
 
 
     Ok(())
