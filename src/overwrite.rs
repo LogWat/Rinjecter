@@ -45,7 +45,7 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x440BF7, rb1[0]).unwrap();
     Process::write(process, 0x440BFB, rb2[0]).unwrap();
     Process::write(process, 0x440CAB, rb1[3]).unwrap();
-    Process::write(process, 0x440CB1, rb2[1]).unwrap();
+    Process::write(process, 0x440CAF, rb2[1]).unwrap();
     Process::write(process, 0x440D95, rb1[0]).unwrap();
     Process::write(process, 0x440D99, rb2[0]).unwrap();
     Process::write(process, 0x441274, rb1[3]).unwrap();
