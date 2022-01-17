@@ -20,13 +20,14 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x41F9EB, rb2[0]).unwrap();
     Process::write(process, 0x41FBE1, rb1[0]).unwrap();     // mov eax, [ebp + 0xBC30] -> mov eax, [0x4BEA00]; nop
     Process::write(process, 0x41FBE5, rb2[0]).unwrap();
-    
+
     Process::write(process, 0x41FC8D, rb1[1]).unwrap();     // mov [eax + 0xBC30], 0x1 -> mov [0x4BEA00], 0x1
-    Process::write(process, 0x41FC91, rb2[1]).unwrap();     // ( eax == [[0x4B5B4C]] )
-    Process::write(process, 0x41DF76, rb1[1]).unwrap();
-    Process::write(process, 0x41DF7A, rb2[1]).unwrap();
-    Process::write(process, 0x41FDF3, rb1[1]).unwrap();
+    Process::write(process, 0x41FC91, rb2[1]).unwrap();
+    Process::write(process, 0x41FD76, rb1[1]).unwrap();     // mov [ecx + 0xBC30], 0x2 -> mov [0x4BEA01], 0x2
+    Process::write(process, 0x41FD7A, rb2[1]).unwrap();
+    Process::write(process, 0x41FDF3, rb1[1]).unwrap();     // mov [ecx + 0xBC30], 0x3 -> mov [0x4BEA00], 0x3
     Process::write(process, 0x41FDF7, rb2[1]).unwrap();
+
     Process::write(process, 0x41FF01, rb1[2]).unwrap();
     Process::write(process, 0x41FF05, rb2[1]).unwrap();     // -> mov [0x4BEA00], edx
     Process::write(process, 0x42035E, rb1[2]).unwrap();
