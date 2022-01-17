@@ -107,6 +107,5 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x44152C + 0x4, 0xEB90 as u32).unwrap();   // -> nop
     Process::write(process, 0x44152C + 0x2, 0x2C as u32).unwrap();     // -> jmp 0x44155F
 
-
     Ok(())
 }
