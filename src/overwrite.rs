@@ -44,25 +44,57 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
         Overwrite {address: 0x441274, value_index0: 3, value_index1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
         Overwrite {address: 0x47BF1D, value_index0: 5, value_index1: 1},    // mov edx, [eax+0xBC30] -> mov edx, [0x4C4300]
     ];
+    let mut old_bytes: Vec<Overwrite> = Vec::new();
 
     for i in rs_ovw_list.iter().enumerate() {
         let ovw = &rs_ovw_list[i.0];
         match Process::write(process, ovw.address, rb1[ovw.value_index0]) {
-            Ok(_) => {},
+            Ok(_) => {
+                old_bytes.push(
+                    Overwrite {
+                        address: ovw.address, 
+                        value_index0: ovw.value_index0, 
+                        value_index1: ovw.value_index1
+                    }
+                );
+            },
             Err(_) => {
-                return Err("[!] Failed to overwrite RoundState section.");
+                for j in old_bytes.iter().enumerate() {
+                    let ovw = &old_bytes[j.0];
+                    match Process::write(process, ovw.address, rb2[ovw.value_index1]) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            return Err(format!("Failed to write to {:x}", ovw.address));
+                        }
+                    }
+                }
+                return Err("Error: Failed to overwrite RoundState section.");
             }
         };
         match Process::write(process, ovw.address + 4, rb2[ovw.value_index1]) {
-            Ok(_) => {},
+            Ok(_) => {
+                old_bytes.push(
+                    Overwrite {
+                        address: ovw.address, 
+                        value_index0: ovw.value_index0, 
+                        value_index1: ovw.value_index1
+                    }
+                );
+            },
             Err(_) => {
-                return Err("[!] Failed to overwrite RoundState section.");
+                for j in old_bytes.iter().enumerate() {
+                    let ovw = &old_bytes[j.0];
+                    match Process::write(process, ovw.address, rb1[ovw.value_index0]) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            return Err(format!("Failed to write to {:x}", ovw.address));
+                        }
+                    }
+                }
+                return Err("Error: Failed to overwrite RoundState section.");
             }
         };
-    }
-
-    Process::write(process, 0x47BF1D, rb1[5]).unwrap();     // mov edx, [eax + 0xBC30] -> mov edx, [0x4BEA00]
-    Process::write(process, 0x47BF21, rb2[1]).unwrap();
+    };
 
     // Evacuate the WinFlag storage location
     Process::write(process, 0x41F8CE, rb1[7]).unwrap();    // mov [eax + 0xBC34], 0x0 -> mov [0x4C4304], 0x0
