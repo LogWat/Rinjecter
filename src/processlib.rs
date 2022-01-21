@@ -36,8 +36,7 @@ impl Process {
     }
 
     // Exにする必要は無いけど一応他のプロセスに対しても使えるようにしておく
-    #[allow(dead_code)]
-    fn check_protection(&self, address: u32) -> Result<minwindef::DWORD, &'static str> {
+    pub fn check_protection(&self, address: u32) -> Result<winnt::MEMORY_BASIC_INFORMATION, &'static str> {
         let mut meminfo = winnt::MEMORY_BASIC_INFORMATION {
             BaseAddress: address as *mut _,
             AllocationBase: address as *mut _,
@@ -58,92 +57,32 @@ impl Process {
             return Err("Failed to get memory info.");
         }
 
-        Ok(meminfo.Protect)
+        Ok(meminfo)
     }
 
-    pub unsafe fn read<T>(&self, address: u32) -> Result<&T, &'static str> {
-        match self.check_protection(address) {
-            Ok(protect) => {
-                match protect {
-                    winnt::PAGE_READWRITE | winnt::PAGE_EXECUTE_READWRITE => {
-                        return Ok(&*(address as *const T));
-                    },
-                    _ => {
-                        let mut oldp: minwindef::DWORD = 0;
-
-                        if memoryapi::VirtualProtectEx(
-                            self.handle,
-                            address as *mut _,
-                            mem::size_of::<T>() as _,
-                            winnt::PAGE_READWRITE,
-                            &mut oldp as *mut _,
-                        ) == 0 {
-                            return Err("Failed to change memory protection.");
-                        }
-
-                        let result = &*(address as *const T);
-
-                        if memoryapi::VirtualProtectEx(
-                            self.handle,
-                            address as *mut _,
-                            mem::size_of::<T>() as _,
-                            oldp,
-                            &mut oldp as *mut _,
-                        ) == 0 {
-                            return Err("Failed to change memory protection.");
-                        }
-
-                        return Ok(result);
-                    }
-                };
-            },
-            Err(err) => {
-                return Err(err);
-            }
+    pub fn change_protection(&self, address: u32, protection: minwindef::DWORD, size: u32) -> Result<minwindef::DWORD, &'static str> {
+        let oldp: minwindef::DWORD = 0;
+        if unsafe {
+            memoryapi::VirtualProtectEx(
+                self.handle,
+                address as *mut _,
+                size as usize,
+                protection,
+                &mut oldp as *mut _ as _,
+            )
+        } == 0 {
+            return Err("Failed to change memory protection.");
         }
+
+        return Ok(oldp);
     }
 
-    pub unsafe fn write<T>(&self, address: u32, value: T) -> Result<(), &'static str> {
-        match self.check_protection(address) {
-            Ok(protect) => {
-                match protect {
-                    winnt::PAGE_READWRITE | winnt::PAGE_EXECUTE_READWRITE => {
-                        *(address as *mut T) = value;
-                        return Ok(());
-                    },
-                    _ => {
-                        let mut oldp: minwindef::DWORD = 0;
+    pub unsafe fn read<T>(&self, address: u32, _size: T) -> &T {
+        &*(address as *const T)
+    }
 
-                        if memoryapi::VirtualProtectEx(
-                            self.handle,
-                            address as *mut _,
-                            mem::size_of::<T>() as _,
-                            winnt::PAGE_READWRITE,
-                            &mut oldp as *mut _,
-                        ) == 0 {
-                            return Err("Failed to change memory protection.");
-                        }
-
-                        *(address as *mut T) = value;
-
-                        if memoryapi::VirtualProtectEx(
-                            self.handle,
-                            address as *mut _,
-                            mem::size_of::<T>() as _,
-                            oldp,
-                            &mut oldp as *mut _,
-                        ) == 0 {
-                            return Err("Failed to change memory protection.");
-                        }
-
-                        return Ok(());
-                    }
-                };
-            },
-            Err(err) => {
-                return Err(err);
-            }
-        }
+    pub unsafe fn write<T>(&self, address: u32, value: T)  {
+        *(address as *mut T) = value;
     }
 
     pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
