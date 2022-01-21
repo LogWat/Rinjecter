@@ -1,12 +1,20 @@
 use crate::processlib::Process;
 
-struct Overwrite {
-    address: u32,
-    value_index0: usize,
-    value_index1: usize,
+use winapi::um::{memoryapi, processthreadsapi, winnt};
+use winapi::shared::minwindef;
+
+struct OverWrite {
+    addr: u32,
+    idx0: usize,
+    idx1: usize,
 }
 
-pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'static str> {
+struct OriginalBytes<T> {
+    addr: u32,
+    bytes: T,
+}
+
+pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'static str> {
 
     let rb1: [u32; 21] = [
         0x4C4300A1, 0x430005C7, 0x43001589, 0x43003D83, 
@@ -21,77 +29,77 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     // rewrite program
 
     // Evacuate the RoundState stroage location -> to [0x4C4300]
-    let rs_ovw_list: [Overwrite; 21] = [
-        Overwrite {address: 0x41DBD4, value_index0: 0, value_index1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x41DF21, value_index0: 0, value_index1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x41F9E7, value_index0: 0, value_index1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x41FBE1, value_index0: 0, value_index1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x41FC8D, value_index0: 1, value_index1: 1},    // mov [eax+0xBC30], 0x1 -> mov [0x4C4300], 0x1
-        Overwrite {address: 0x41FD76, value_index0: 1, value_index1: 1},    // mov [ecx+0xBC30], 0x2 -> mov [0x4C4300], 0x2
-        Overwrite {address: 0x41FDF3, value_index0: 1, value_index1: 1},    // mov [ecx+0xBC30], 0x3 -> mov [0x4C4300], 0x3 
-        Overwrite {address: 0x41FF01, value_index0: 2, value_index1: 1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
-        Overwrite {address: 0x42035E, value_index0: 1, value_index1: 1},    // mov [ecx+0xBC30], 0x4 -> mov [0x4C4300], 0x4
-        Overwrite {address: 0x420399, value_index0: 0, value_index1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]
-        Overwrite {address: 0x421B93, value_index0: 0, value_index1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x423EBE, value_index0: 3, value_index1: 1},    // cmp [ecx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
-        Overwrite {address: 0x42E1D4, value_index0: 2, value_index1: 1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
-        Overwrite {address: 0x42E8CA, value_index0: 4, value_index1: 1},    // mov ecx, [esi+0xBC30] -> mov ecx, [0x4C4300]
-        Overwrite {address: 0x434A58, value_index0: 3, value_index1: 1},    // cmp [eax+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
-        Overwrite {address: 0x43A762, value_index0: 3, value_index1: 1},    // cmp [edx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
-        Overwrite {address: 0x440BF7, value_index0: 0, value_index1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x440CAB, value_index0: 3, value_index1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
-        Overwrite {address: 0x440D95, value_index0: 0, value_index1: 0},    // mov eax, [eax+0xBC30] -> mov eax, [0x4C4300]; nop
-        Overwrite {address: 0x441274, value_index0: 3, value_index1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
-        Overwrite {address: 0x47BF1D, value_index0: 5, value_index1: 1},    // mov edx, [eax+0xBC30] -> mov edx, [0x4C4300]
+    let rs_ovw_list: [OverWrite; 21] = [
+        OverWrite {addr: 0x41DBD4, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41DF21, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41F9E7, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41FBE1, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41FC8D, idx0: 1, idx1: 1},    // mov [eax+0xBC30], 0x1 -> mov [0x4C4300], 0x1
+        OverWrite {addr: 0x41FD76, idx0: 1, idx1: 1},    // mov [ecx+0xBC30], 0x2 -> mov [0x4C4300], 0x2
+        OverWrite {addr: 0x41FDF3, idx0: 1, idx1: 1},    // mov [ecx+0xBC30], 0x3 -> mov [0x4C4300], 0x3 
+        OverWrite {addr: 0x41FF01, idx0: 2, idx1: 1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
+        OverWrite {addr: 0x42035E, idx0: 1, idx1: 1},    // mov [ecx+0xBC30], 0x4 -> mov [0x4C4300], 0x4
+        OverWrite {addr: 0x420399, idx0: 0, idx1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]
+        OverWrite {addr: 0x421B93, idx0: 0, idx1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x423EBE, idx0: 3, idx1: 1},    // cmp [ecx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
+        OverWrite {addr: 0x42E1D4, idx0: 2, idx1: 1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
+        OverWrite {addr: 0x42E8CA, idx0: 4, idx1: 1},    // mov ecx, [esi+0xBC30] -> mov ecx, [0x4C4300]
+        OverWrite {addr: 0x434A58, idx0: 3, idx1: 1},    // cmp [eax+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
+        OverWrite {addr: 0x43A762, idx0: 3, idx1: 1},    // cmp [edx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
+        OverWrite {addr: 0x440BF7, idx0: 0, idx1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x440CAB, idx0: 3, idx1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
+        OverWrite {addr: 0x440D95, idx0: 0, idx1: 0},    // mov eax, [eax+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x441274, idx0: 3, idx1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
+        OverWrite {addr: 0x47BF1D, idx0: 5, idx1: 1},    // mov edx, [eax+0xBC30] -> mov edx, [0x4C4300]
     ];
-    let mut old_bytes: Vec<Overwrite> = Vec::new();
+    let mut old_bytes: Vec<OverWrite> = Vec::new();
 
     for i in rs_ovw_list.iter().enumerate() {
         let ovw = &rs_ovw_list[i.0];
-        match Process::write(process, ovw.address, rb1[ovw.value_index0]) {
+        match Process::write(process, ovw.addr, rb1[ovw.idx0]) {
             Ok(_) => {
                 old_bytes.push(
-                    Overwrite {
-                        address: ovw.address, 
-                        value_index0: ovw.value_index0, 
-                        value_index1: ovw.value_index1
+                    OverWrite {
+                        addr: ovw.addr, 
+                        idx0: ovw.idx0, 
+                        idx1: ovw.idx1
                     }
                 );
             },
             Err(_) => {
                 for j in old_bytes.iter().enumerate() {
                     let ovw = &old_bytes[j.0];
-                    match Process::write(process, ovw.address, rb2[ovw.value_index1]) {
+                    match Process::write(process, ovw.addr, rb2[ovw.idx1]) {
                         Ok(_) => {},
                         Err(_) => {
-                            return Err(format!("Failed to write to {:x}", ovw.address));
+                            return Err(format!("Failed to write to {:x}", ovw.addr));
                         }
                     }
                 }
-                return Err("Error: Failed to overwrite RoundState section.");
+                return Err("Error: Failed to OverWrite RoundState section.");
             }
         };
-        match Process::write(process, ovw.address + 4, rb2[ovw.value_index1]) {
+        match Process::write(process, ovw.addr + 4, rb2[ovw.idx1]) {
             Ok(_) => {
                 old_bytes.push(
-                    Overwrite {
-                        address: ovw.address, 
-                        value_index0: ovw.value_index0, 
-                        value_index1: ovw.value_index1
+                    OverWrite {
+                        addr: ovw.addr, 
+                        idx0: ovw.idx0, 
+                        idx1: ovw.idx1
                     }
                 );
             },
             Err(_) => {
                 for j in old_bytes.iter().enumerate() {
                     let ovw = &old_bytes[j.0];
-                    match Process::write(process, ovw.address, rb1[ovw.value_index0]) {
+                    match Process::write(process, ovw.addr, rb1[ovw.idx0]) {
                         Ok(_) => {},
                         Err(_) => {
-                            return Err(format!("Failed to write to {:x}", ovw.address));
+                            return Err(format!("Failed to write to {:x}", ovw.addr));
                         }
                     }
                 }
-                return Err("Error: Failed to overwrite RoundState section.");
+                return Err("Error: Failed to OverWrite RoundState section.");
             }
         };
     };
@@ -156,5 +164,54 @@ pub unsafe extern "stdcall" fn overwrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x441530, 0xEB90 as u16).unwrap();       // -> nop
     Process::write(process, 0x441532, 0x2C as u8).unwrap();          // -> jmp 0x44155F
 
+    Ok(())
+}
+
+unsafe extern "stdcall" fn overwrite_process(ovw_list: &[OverWrite], process: &Process) -> Result<(), &'static str> {
+
+    let rb1: [u32; 21] = [
+        0x4C4300A1, 0x430005C7, 0x43001589, 0x43003D83, 
+        0x43000D8B, 0x4300158B, 0x43043589, 0x430405C7,
+        0x4304358B, 0x4304158B, 0x4C4304A1, 0x43040D8B,
+        0x43041589, 0x43083D83, 0x4C4308A1, 0x43083589,
+        0x430805C7, 0x4C4308A3, 0x43081589, 0x43081589,
+        0x4C4304A3
+        ];
+    let rb2: [u16; 2] = [0x9000, 0x4C];
+
+    let min_addr = ovw_list.iter().map(|ovw| ovw.addr).min().unwrap();
+    let max_addr = ovw_list.iter().map(|ovw| ovw.addr).max().unwrap();
+    let addr_range = max_addr - min_addr;
+    let mut oldp: minwindef::DWORD = 0;
+
+    match Process::check_protection(process, min_addr) {
+        Ok(meminfo) => {
+            match meminfo.Protect {
+                winnt::PAGE_EXECUTE_READWRITE | winnt::PAGE_READWRITE => {},
+                _ => {
+                    match Process::change_protection(process, min_addr, winnt::PAGE_EXECUTE_READWRITE | winnt::PAGE_READWRITE, addr_range) {
+                        Ok(o) => oldp = o,
+                        Err(err) => return Err(err)
+                    }
+                }
+            }
+        },
+        Err(e) => {
+            return Err(e);
+        }
+    }
+
+    for ovw in ovw_list {
+        Process::write(process, ovw.addr, rb1[ovw.idx0]);
+        Process::write(process, ovw.addr + 0x4, rb2[ovw.idx1]);
+    }
+
+    if oldp != 0 {
+        match Process::change_protection(process, min_addr, oldp, addr_range) {
+            Ok(_) => {},
+            Err(e) => return Err(e)
+        }
+    }
+    
     Ok(())
 }
