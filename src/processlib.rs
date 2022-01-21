@@ -60,6 +60,7 @@ impl Process {
         Ok(meminfo)
     }
 
+    // address: BaseAddr, size: RegionSize, protection: Protect
     pub fn change_protection(&self, address: u32, protection: minwindef::DWORD, size: u32) -> Result<minwindef::DWORD, &'static str> {
         let oldp: minwindef::DWORD = 0;
         if unsafe {
