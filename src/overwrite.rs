@@ -1,17 +1,18 @@
 use crate::processlib::Process;
 
-use winapi::um::{memoryapi, processthreadsapi, winnt};
+use winapi::um::{winnt};
 use winapi::shared::minwindef;
+
+enum AddrSize {
+    Byte(u8),
+    Word(u16),
+    Dword(u32),
+    Qword(u64),
+}
 
 struct OverWrite {
     addr: u32,
-    idx0: usize,
-    idx1: usize,
-}
-
-struct OriginalBytes<T> {
-    addr: u32,
-    bytes: T,
+    byte: AddrSize,
 }
 
 pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'static str> {
@@ -29,84 +30,38 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     // rewrite program
 
     // Evacuate the RoundState stroage location -> to [0x4C4300]
-    let rs_ovw_list: [OverWrite; 21] = [
-        OverWrite {addr: 0x41DBD4, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x41DF21, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x41F9E7, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x41FBE1, idx0: 0, idx1: 0},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x41FC8D, idx0: 1, idx1: 1},    // mov [eax+0xBC30], 0x1 -> mov [0x4C4300], 0x1
-        OverWrite {addr: 0x41FD76, idx0: 1, idx1: 1},    // mov [ecx+0xBC30], 0x2 -> mov [0x4C4300], 0x2
-        OverWrite {addr: 0x41FDF3, idx0: 1, idx1: 1},    // mov [ecx+0xBC30], 0x3 -> mov [0x4C4300], 0x3 
-        OverWrite {addr: 0x41FF01, idx0: 2, idx1: 1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
-        OverWrite {addr: 0x42035E, idx0: 1, idx1: 1},    // mov [ecx+0xBC30], 0x4 -> mov [0x4C4300], 0x4
-        OverWrite {addr: 0x420399, idx0: 0, idx1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]
-        OverWrite {addr: 0x421B93, idx0: 0, idx1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x423EBE, idx0: 3, idx1: 1},    // cmp [ecx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
-        OverWrite {addr: 0x42E1D4, idx0: 2, idx1: 1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
-        OverWrite {addr: 0x42E8CA, idx0: 4, idx1: 1},    // mov ecx, [esi+0xBC30] -> mov ecx, [0x4C4300]
-        OverWrite {addr: 0x434A58, idx0: 3, idx1: 1},    // cmp [eax+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
-        OverWrite {addr: 0x43A762, idx0: 3, idx1: 1},    // cmp [edx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
-        OverWrite {addr: 0x440BF7, idx0: 0, idx1: 0},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x440CAB, idx0: 3, idx1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
-        OverWrite {addr: 0x440D95, idx0: 0, idx1: 0},    // mov eax, [eax+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x441274, idx0: 3, idx1: 1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
-        OverWrite {addr: 0x47BF1D, idx0: 5, idx1: 1},    // mov edx, [eax+0xBC30] -> mov edx, [0x4C4300]
+    let rs_ovw_list: Vec<OverWrite> = vec![
+        OverWrite {addr: 0x41DBD4, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DBD8, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41DF21, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DF24, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41F9E7, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41F9EA, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41FBE1, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41FBE5, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41FC8D, byte: AddrSize::Dword(rb1[1])}, OverWrite {addr: 0x41FC91, byte: AddrSize::Word(rb2[1])},    // mov [eax+0xBC30], 0x1 -> mov [0x4C4300], 0x1
+        OverWrite {addr: 0x41FD76, byte: AddrSize::Dword(rb1[1])}, OverWrite {addr: 0x41FD7A, byte: AddrSize::Word(rb2[1])},    // mov [ecx+0xBC30], 0x2 -> mov [0x4C4300], 0x2
+        OverWrite {addr: 0x41FDF3, byte: AddrSize::Dword(rb1[1])}, OverWrite {addr: 0x41FDF7, byte: AddrSize::Word(rb2[1])},    // mov [ecx+0xBC30], 0x3 -> mov [0x4C4300], 0x3
+        OverWrite {addr: 0x41FF01, byte: AddrSize::Dword(rb1[2])}, OverWrite {addr: 0x41FF05, byte: AddrSize::Word(rb2[1])},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
+        OverWrite {addr: 0x42035E, bytes1: rb1[1], bytes2: rb2[1], bytes3: -1},    // mov [ecx+0xBC30], 0x4 -> mov [0x4C4300], 0x4
+        OverWrite {addr: 0x420399, bytes1: rb1[0], bytes2: rb2[0], bytes3: -1},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]
+        OverWrite {addr: 0x421B93, bytes1: rb1[0], bytes2: rb2[0], bytes3: -1},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x423EBE, bytes1: rb1[3], bytes2: rb2[1], bytes3: -1},    // cmp [ecx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
+        OverWrite {addr: 0x42E1D4, bytes1: rb1[2], bytes2: rb2[1], bytes3: -1},    // mov [ecx+0xBC30], edx -> mov [0x4C4300], edx
+        OverWrite {addr: 0x42E8CA, bytes1: rb1[4], bytes2: rb2[1], bytes3: -1},    // mov ecx, [esi+0xBC30] -> mov ecx, [0x4C4300]
+        OverWrite {addr: 0x434A58, bytes1: rb1[3], bytes2: rb2[1], bytes3: -1},    // cmp [eax+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
+        OverWrite {addr: 0x43A762, bytes1: rb1[3], bytes2: rb2[1], bytes3: -1},    // cmp [edx+0xBC30], 0x3 -> cmp [0x4C4300], 0x3
+        OverWrite {addr: 0x440BF7, bytes1: rb1[0], bytes2: rb2[0], bytes3: -1},    // mov eax, [ecx+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x440CAB, bytes1: rb1[3], bytes2: rb2[1], bytes3: -1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
+        OverWrite {addr: 0x440D95, bytes1: rb1[0], bytes2: rb2[0], bytes3: -1},    // mov eax, [eax+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x441274, bytes1: rb1[3], bytes2: rb2[1], bytes3: -1},    // cmp [ecx+0xBC30], 0x2 -> cmp [0x4C4300], 0x2
+        OverWrite {addr: 0x47BF1D, bytes1: rb1[5], bytes2: rb2[1], bytes3: -1},    // mov edx, [eax+0xBC30] -> mov edx, [0x4C4300]
     ];
-    let mut old_bytes: Vec<OverWrite> = Vec::new();
 
-    for i in rs_ovw_list.iter().enumerate() {
-        let ovw = &rs_ovw_list[i.0];
-        match Process::write(process, ovw.addr, rb1[ovw.idx0]) {
-            Ok(_) => {
-                old_bytes.push(
-                    OverWrite {
-                        addr: ovw.addr, 
-                        idx0: ovw.idx0, 
-                        idx1: ovw.idx1
-                    }
-                );
-            },
-            Err(_) => {
-                for j in old_bytes.iter().enumerate() {
-                    let ovw = &old_bytes[j.0];
-                    match Process::write(process, ovw.addr, rb2[ovw.idx1]) {
-                        Ok(_) => {},
-                        Err(_) => {
-                            return Err(format!("Failed to write to {:x}", ovw.addr));
-                        }
-                    }
-                }
-                return Err("Error: Failed to OverWrite RoundState section.");
-            }
-        };
-        match Process::write(process, ovw.addr + 4, rb2[ovw.idx1]) {
-            Ok(_) => {
-                old_bytes.push(
-                    OverWrite {
-                        addr: ovw.addr, 
-                        idx0: ovw.idx0, 
-                        idx1: ovw.idx1
-                    }
-                );
-            },
-            Err(_) => {
-                for j in old_bytes.iter().enumerate() {
-                    let ovw = &old_bytes[j.0];
-                    match Process::write(process, ovw.addr, rb1[ovw.idx0]) {
-                        Ok(_) => {},
-                        Err(_) => {
-                            return Err(format!("Failed to write to {:x}", ovw.addr));
-                        }
-                    }
-                }
-                return Err("Error: Failed to OverWrite RoundState section.");
-            }
-        };
-    };
+    match overwrite_process_list(&rs_ovw_list, process) {
+        Ok(_) => {},
+        Err(e) => {
+            return Err(e);
+        }
+    }
 
     // Evacuate the WinFlag storage location
-    Process::write(process, 0x41F8CE, rb1[7]).unwrap();    // mov [eax + 0xBC34], 0x0 -> mov [0x4C4304], 0x0
-    Process::write(process, 0x41F8D2, rb2[1]).unwrap();
     Process::write(process, 0x41F8D6, 0x0 as u16).unwrap();
     Process::write(process, 0x41F8ED, rb1[6]).unwrap();    // mov [ecx + 0xBC34], esi -> mov [0x4C4304], esi
     Process::write(process, 0x41F8F1, rb2[1]).unwrap();
@@ -131,6 +86,11 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     Process::write(process, 0x42E8B9, rb2[0]).unwrap();
     Process::write(process, 0x42E90D, rb1[11]).unwrap();   // mov ecx, [esi + 0xBC34] -> mov ecx, [0x4BEA04]
     Process::write(process, 0x42E911, rb2[1]).unwrap();
+
+    let wf_ovw_list: [OverWrite; ] = [
+        OverWrite {addr: 0x41F8CE, idx0: 7, bytes2: rb2[1]},    // mov [eax + 0xBC34], 0x0 -> mov [0x4C4304], 0x0
+        OverWrite {addr: 0x41, idx0: , idx1: },
+    ]
 
     // Evacuate the EoG storage location
     Process::write(process, 0x41DD98, rb1[13]).unwrap();   // cmp [ebp + 0xBC38], 0x3 -> cmp [0x4C4308], 0x3
@@ -167,17 +127,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     Ok(())
 }
 
-unsafe extern "stdcall" fn overwrite_process(ovw_list: &[OverWrite], process: &Process) -> Result<(), &'static str> {
-
-    let rb1: [u32; 21] = [
-        0x4C4300A1, 0x430005C7, 0x43001589, 0x43003D83, 
-        0x43000D8B, 0x4300158B, 0x43043589, 0x430405C7,
-        0x4304358B, 0x4304158B, 0x4C4304A1, 0x43040D8B,
-        0x43041589, 0x43083D83, 0x4C4308A1, 0x43083589,
-        0x430805C7, 0x4C4308A3, 0x43081589, 0x43081589,
-        0x4C4304A3
-        ];
-    let rb2: [u16; 2] = [0x9000, 0x4C];
+unsafe extern "stdcall" fn overwrite_process_list<T>(ovw_list: &[OverWrite<T>], process: &Process) -> Result<(), &'static str> {
 
     let min_addr = ovw_list.iter().map(|ovw| ovw.addr).min().unwrap();
     let max_addr = ovw_list.iter().map(|ovw| ovw.addr).max().unwrap();
@@ -202,8 +152,7 @@ unsafe extern "stdcall" fn overwrite_process(ovw_list: &[OverWrite], process: &P
     }
 
     for ovw in ovw_list {
-        Process::write(process, ovw.addr, rb1[ovw.idx0]);
-        Process::write(process, ovw.addr + 0x4, rb2[ovw.idx1]);
+        Process::write(process, ovw.addr, ovw.byte);
     }
 
     if oldp != 0 {
