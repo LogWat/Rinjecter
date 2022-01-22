@@ -3,16 +3,17 @@ use crate::processlib::Process;
 use winapi::um::{winnt};
 use winapi::shared::minwindef;
 
-enum AddrSize {
+#[derive(Copy, Clone)]
+pub enum AddrSize {
     Byte(u8),
     Word(u16),
     Dword(u32),
     Qword(u64),
 }
 
-struct OverWrite {
-    addr: u32,
-    byte: AddrSize,
+pub struct OverWrite {
+    pub addr: u32,
+    pub byte: AddrSize,
 }
 
 pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'static str> {
@@ -129,7 +130,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     Ok(())
 }
 
-unsafe extern "stdcall" fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), &'static str> {
+pub unsafe extern "stdcall" fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), &'static str> {
 
     let min_addr = ovw_list.iter().map(|ovw| ovw.addr).min().unwrap();
     let max_addr = ovw_list.iter().map(|ovw| ovw.addr).max().unwrap();

@@ -82,7 +82,7 @@ impl Process {
         &*(address as *const T)
     }
 
-    pub unsafe fn write<T>(&self, address: u32, value: T)  {
+    pub unsafe fn write<T: Copy>(&self, address: u32, value: T)  {
         *(address as *mut T) = value;
     }
 
