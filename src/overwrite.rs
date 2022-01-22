@@ -30,7 +30,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     // rewrite program
 
     // Evacuate the RoundState stroage location -> to [0x4C4300]
-    let rs_ovw_list: [OverWrite; 42] = [
+    let rs_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x41DBD4, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DBD8, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41DF21, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DF24, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41F9E7, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41F9EA, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
@@ -62,7 +62,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     }
 
     // Evacuate the WinFlag storage location
-    let wf_ovw_list: [OverWrite; 26] = [
+    let wf_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x41F8CE, byte: AddrSize::Dword(rb1[7])}, OverWrite {addr: 0x41F8D2, byte: AddrSize::Word(rb2[1])},
         OverWrite {addr: 0x41F8D6, byte: AddrSize::Word(0x0 as u16)},                                                           // mov [eax + 0xBC34], 0x0 -> mov [0x4C4304], 0x0
         OverWrite {addr: 0x41F8ED, byte: AddrSize::Dword(rb1[6])}, OverWrite {addr: 0x41F8F1, byte: AddrSize::Word(rb2[1])},    // mov [ecx + 0xBC34], esi -> mov [0x4C4304], esi
@@ -88,7 +88,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
 
 
     // Evacuate the EoG storage location
-    let eog_ovw_list: [OverWrite; 25] = [
+    let eog_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x41DD98, byte: AddrSize::Dword(rb1[13])}, OverWrite {addr: 0x41DD9C, byte: AddrSize::Word(rb2[1])},   
         OverWrite {addr: 0x41DD9E, byte: AddrSize::Byte(0x3 as u8)},                                                             // mov [ebp + 0xBC38], 0x3 -> mov [0x4C4308], 0x3
         OverWrite {addr: 0x41DF50, byte: AddrSize::Dword(rb1[14])}, OverWrite {addr: 0x41DF54, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp + 0xBC38] -> mov eax, [0x4C4308]; nop
@@ -113,7 +113,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     }
 
     // Other overwrites
-    let other_ovw_list: [OverWrite; 3] = [
+    let other_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x44152C, byte: AddrSize::Dword(0x90909090 as u32)},   // -> nop nop nop nop
         OverWrite {addr: 0x441530, byte: AddrSize::Word(0xEB90 as u16)},        // -> nop
         OverWrite {addr: 0x441532, byte: AddrSize::Byte(0x2C as u8)},           // -> jmp 0x44155F
@@ -129,7 +129,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     Ok(())
 }
 
-unsafe extern "stdcall" fn overwrite_process_list(ovw_list: &[OverWrite], process: &Process) -> Result<(), &'static str> {
+unsafe extern "stdcall" fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), &'static str> {
 
     let min_addr = ovw_list.iter().map(|ovw| ovw.addr).min().unwrap();
     let max_addr = ovw_list.iter().map(|ovw| ovw.addr).max().unwrap();
