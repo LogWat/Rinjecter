@@ -11,6 +11,7 @@ use winapi::um::{winnt::*, libloaderapi};
 use winapi::shared::minwindef::*;
 
 use processlib::Process;
+use overwrite::{OverWrite, AddrSize};
 
 use rand::Rng;
 
@@ -28,7 +29,7 @@ pub extern "stdcall" fn DllMain(
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 let process = Process::current_process();
-                match overwrite::overwrite(&process) {
+                match overwrite::OverWrite(&process) {
                     Ok(_) => {},
                     Err(e) => {
                         let msg = format!("Failed to overwrite.\n{}", e);
@@ -63,15 +64,23 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
             // Nameを書き換え
             let mut rng = rand::thread_rng();
             let name_index = rng.gen_range(0..(names.len() - 1));
+            let mut byte_list: Vec<OverWrite> = Vec::new();
 
             for i in 0..names[name_index].len() {
-                match Process::write(&process, (addr + 0x4 + i as i32) as u32, names[name_index][i]) {
-                    Ok(_) => {},
-                    Err(_) => {
-                        return false;
+                byte_list.push(
+                    OverWrite {
+                        addr: (addr + 0x4 + i as i32) as u32,
+                        byte: AddrSize::Byte(names[name_index][i]),
                     }
-                }
+                );
             }
+
+            match overwrite::overwrite_process_list(&byte_list, process) {
+                Ok(_) => {},
+                Err(e) => {
+                    return false;
+                }
+            };
 
             return true;
         }
