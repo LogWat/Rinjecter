@@ -56,7 +56,17 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
     let mut addr = *((*(DPATH as *mut i32) + 0x192C) as *mut i32); // [[0x4B5B4C] + 0x64B * 4]
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
 
-    let names: Vec<&[u8]> = vec![b"Hello, UnderWorld!\0", b"\\(^o^)/\0", b"OXOXOXOXOXOXOXOXOXOXOXOXO\0", b" \0", b"OMFG! Miko!!!\0"];
+    let names: Vec<&[u8]> = vec![
+        b"Hello, World!\0", 
+        b"\\(^o^)/\0", 
+        b"OXOXOXOXOXOXOXOXOXOXOXOXO\0", 
+        b"OMFG! Miko!!!\0",
+        b":D\0",
+        b":P\0",
+        b"\0",
+        b"42\0",
+        b"<!> MISTAKEN <!>\0",
+    ];
 
     for _ in 0..num_of_characters {
         if *((addr + 0x4) as *mut i32) == 0x7473694D && *((addr + 0x8) as *mut i32) == 0x6E656B61 {
