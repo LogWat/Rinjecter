@@ -63,7 +63,7 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
 
             // Nameを書き換え
             let mut rng = rand::thread_rng();
-            let name_index = rng.gen_range(0..(names.len() - 1));
+            let name_index = rng.gen_range(0..(names.len()));
             let mut byte_list: Vec<OverWrite> = Vec::new();
 
             for i in 0..names[name_index].len() {
