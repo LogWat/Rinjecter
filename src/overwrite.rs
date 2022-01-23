@@ -3,6 +3,8 @@ use crate::processlib::Process;
 use winapi::um::{winnt};
 use winapi::shared::minwindef;
 
+use winapi::um::winuser::{MB_OK, MessageBoxW};
+
 #[derive(Copy, Clone)]
 pub enum AddrSize {
     Byte(u8),
@@ -34,7 +36,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     let rs_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x41DBD4, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DBD8, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41DF21, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DF24, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x41F9E7, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41F9EA, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41F9E7, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41F9EB, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41FBE1, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41FBE5, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41FC8D, byte: AddrSize::Dword(rb1[1])}, OverWrite {addr: 0x41FC91, byte: AddrSize::Word(rb2[1])},    // mov [eax+0xBC30], 0x1 -> mov [0x4C4300], 0x1
         OverWrite {addr: 0x41FD76, byte: AddrSize::Dword(rb1[1])}, OverWrite {addr: 0x41FD7A, byte: AddrSize::Word(rb2[1])},    // mov [ecx+0xBC30], 0x2 -> mov [0x4C4300], 0x2
@@ -140,9 +142,16 @@ pub unsafe extern "stdcall" fn overwrite_process_list(ovw_list: &Vec<OverWrite>,
     match Process::check_protection(process, min_addr) {
         Ok(meminfo) => {
             match meminfo.Protect {
-                winnt::PAGE_EXECUTE_READWRITE | winnt::PAGE_READWRITE => {},
+                winnt::PAGE_EXECUTE_READWRITE | winnt::PAGE_READWRITE => {
+                    if meminfo.RegionSize < addr_range as usize {
+                        match Process::change_protection(process, min_addr, winnt::PAGE_READWRITE, addr_range) {
+                            Ok(o) => oldp = o,
+                            Err(err) => return Err(err)
+                        }
+                    }
+                },
                 _ => {
-                    match Process::change_protection(process, min_addr, winnt::PAGE_EXECUTE_READWRITE | winnt::PAGE_READWRITE, addr_range) {
+                    match Process::change_protection(process, min_addr, winnt::PAGE_READWRITE, addr_range) {
                         Ok(o) => oldp = o,
                         Err(err) => return Err(err)
                     }
