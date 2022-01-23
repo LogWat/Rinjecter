@@ -53,8 +53,8 @@ pub extern "stdcall" fn DllMain(
 // 生ポインタの利用 *mut or *const
 unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
 
-    let mut addr = *((*(DPATH as *mut i32) + 0x192C) as *mut i32); // [[0x4B5B4C] + 0x64B * 4]
-    let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32); // [[0x4B5B4C] + 0x335 * 4]
+    let mut addr = *((*(DPATH as *mut i32) + 0x192C) as *mut i32);
+    let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32);
 
     let names: Vec<&[u8]> = vec![
         b"Hello, World!\0", 
@@ -87,9 +87,7 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
 
             match overwrite::overwrite_process_list(&byte_list, process) {
                 Ok(_) => {},
-                Err(e) => {
-                    return false;
-                }
+                Err(_e) => { return false; }
             };
 
             return true;
