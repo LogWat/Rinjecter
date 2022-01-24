@@ -3,6 +3,8 @@ use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt};
 use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt};
 use winapi::shared::minwindef;
 
+use crate::overwrite::AddrSize;
+
 #[derive(Getters)]
 #[get = "pub"]
 #[repr(C)]
@@ -82,8 +84,21 @@ impl Process {
         &*(address as *const T)
     }
 
-    pub unsafe fn write<T>(&self, address: u32, value: T)  {
-        *(address as *mut T) = value;
+    pub unsafe fn write(&self, address: u32, value: AddrSize)  {
+        match value {
+            AddrSize::Qword(v) => {
+                *(address as *mut u64) = v;
+            },
+            AddrSize::Dword(v) => {
+                *(address as *mut u32) = v;
+            },
+            AddrSize::Word(v) => {
+                *(address as *mut u16) = v;
+            },
+            AddrSize::Byte(v) => {
+                *(address as *mut u8) = v;
+            },
+        }
     }
 
     pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
