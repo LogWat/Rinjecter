@@ -35,7 +35,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     // Evacuate the RoundState stroage location -> to [0x4C4300]
     let rs_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x41DBD4, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DBD8, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
-        OverWrite {addr: 0x41DF21, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DF24, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
+        OverWrite {addr: 0x41DF21, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41DF25, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41F9E7, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41F9EB, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41FBE1, byte: AddrSize::Dword(rb1[0])}, OverWrite {addr: 0x41FBE5, byte: AddrSize::Word(rb2[0])},    // mov eax, [ebp+0xBC30] -> mov eax, [0x4C4300]; nop
         OverWrite {addr: 0x41FC8D, byte: AddrSize::Dword(rb1[1])}, OverWrite {addr: 0x41FC91, byte: AddrSize::Word(rb2[1])},    // mov [eax+0xBC30], 0x1 -> mov [0x4C4300], 0x1
