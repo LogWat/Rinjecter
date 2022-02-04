@@ -19,6 +19,7 @@ pub struct Module {
     pub handle: minwindef::HMODULE,
     pub name: OsString,
     pub path: OsString,
+    pub pid: u32,
 }
 
 #[derive(Getters)]
@@ -129,6 +130,7 @@ impl Process {
                     handle: module_entry.hModule,
                     name: name.into(),
                     path: path.into(),
+                    pid: module_entry.th32ProcessID,
                 });
             }
         }
