@@ -19,7 +19,8 @@ pub struct Module {
     pub handle: minwindef::HMODULE,
     pub name: OsString,
     pub path: OsString,
-    pub pid: u32,
+    pub base_addr: u32,
+    pub size: u32,
 }
 
 #[derive(Getters)]
@@ -105,7 +106,7 @@ impl Process {
         }
 
         let mut module_entry: tlhelp32::MODULEENTRY32W = unsafe { mem::zeroed() };
-        module_entry.dwSize = mem::size_of::<tlhelp32::MODULEENTRY32>() as _;
+        module_entry.dwSize = mem::size_of::<tlhelp32::MODULEENTRY32W>() as _;
 
         while unsafe { tlhelp32::Module32NextW(module, &mut module_entry) } != 0 {
             let name = OsString::from_wide(&module_entry.szModule[..]).into_string();
@@ -130,7 +131,8 @@ impl Process {
                     handle: module_entry.hModule,
                     name: name.into(),
                     path: path.into(),
-                    pid: module_entry.th32ProcessID,
+                    base_addr: module_entry.modBaseAddr as u32,
+                    size: module_entry.modBaseSize as u32,
                 });
             }
         }
