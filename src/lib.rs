@@ -5,6 +5,7 @@ extern crate winapi;
 
 mod processlib;
 mod overwrite;
+mod dbg;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, libloaderapi};
@@ -29,6 +30,7 @@ pub extern "stdcall" fn DllMain(
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 let process = Process::current_process();
+                let _ = dbg::Get_Thread_Owner_PID(&process);
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
                     Err(e) => {
