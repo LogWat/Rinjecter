@@ -124,6 +124,7 @@ impl Process {
                 },
             };
             if path.contains(path_name) {
+                unsafe { handleapi::CloseHandle(module) };
                 return Ok(Module {
                     handle: module_entry.hModule,
                     name: name.into(),
@@ -131,6 +132,7 @@ impl Process {
                 });
             }
         }
+        unsafe { handleapi::CloseHandle(module) };
         Err("Failed to find module.")
     }
 
@@ -166,6 +168,4 @@ impl Module {
 }
 
 impl Thread {
-
-    
 }
