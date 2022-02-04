@@ -28,7 +28,6 @@ pub struct Module {
 pub struct Thread {
     pub handle: winnt::HANDLE,
     pub tid: u32,
-    pub owner_tid: u32,
 }
 
 impl Process {
@@ -160,7 +159,6 @@ impl Process {
             threads.push(Thread {
                 handle,
                 tid: thread_entry.th32ThreadID,
-                owner_tid: thread_entry.th32OwnerProcessID,
             });
         }
         unsafe { handleapi::CloseHandle(thread_list) };
