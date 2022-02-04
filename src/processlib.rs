@@ -16,7 +16,7 @@ pub struct Process {
 #[derive(Getters)]
 #[get = "pub"]
 pub struct Module {
-    pub handle: winnt::HANDLE,
+    pub handle: minwindef::HMODULE,
     pub name: OsString,
     pub path: OsString,
 }
@@ -125,7 +125,7 @@ impl Process {
             };
             if path.contains(path_name) {
                 return Ok(Module {
-                    handle: module,
+                    handle: module_entry.hModule,
                     name: name.into(),
                     path: path.into(),
                 });
@@ -163,14 +163,6 @@ impl Process {
 }
 
 impl Module {
-
-    pub unsafe fn read<T>(&self, address: u32) -> &T {
-        &*(address as *const T)
-    }
-
-    pub unsafe fn write<T>(&self, address: u32, value: T) {
-        *(address as *mut T) = value;
-    }
 }
 
 impl Thread {
