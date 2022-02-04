@@ -39,15 +39,7 @@ impl Process {
 
     // Exにする必要は無いけど一応他のプロセスに対しても使えるようにしておく
     pub fn check_protection(&self, address: u32) -> Result<winnt::MEMORY_BASIC_INFORMATION, &'static str> {
-        let mut meminfo = winnt::MEMORY_BASIC_INFORMATION {
-            BaseAddress: address as *mut _,
-            AllocationBase: address as *mut _,
-            AllocationProtect: 0,
-            RegionSize: 0,
-            State: 0,
-            Protect: 0,
-            Type: 0,
-        };
+        let mut meminfo: winnt::MEMORY_BASIC_INFORMATION = unsafe { mem::zeroed() };
         if unsafe {
             memoryapi::VirtualQueryEx(
                 self.handle,
@@ -130,6 +122,32 @@ impl Process {
             }
         }
         Err("Failed to find module.")
+    }
+
+    pub fn get_threadlist(&self) -> Result<Vec<Thread>, &'static str> {
+        let mut threads = Vec::new();
+        let mut thread_entry: tlhelp32::THREADENTRY32 = unsafe { mem::zeroed() };
+        thread_entry.dwSize = mem::size_of::<tlhelp32::THREADENTRY32>() as _;
+
+        let thread_list = unsafe { 
+            tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPTHREAD, self.pid) 
+        };
+        if thread_list == handleapi::INVALID_HANDLE_VALUE {
+            return Err("Failed to create snapshot.");
+        }
+
+        while unsafe { tlhelp32::Thread32Next(thread_list, &mut thread_entry) } != 0 {
+            let handle = unsafe { processthreadsapi::OpenThread(winnt::THREAD_ALL_ACCESS, 0, thread_entry.th32ThreadID) };
+            if handle == handleapi::INVALID_HANDLE_VALUE {
+                return Err("Failed to open thread.");
+            }
+            threads.push(Thread {
+                handle,
+                tid: thread_entry.th32ThreadID,
+            });
+        }
+        unsafe { handleapi::CloseHandle(thread_list) };
+        Ok(threads)
     }
 }
 
