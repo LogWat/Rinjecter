@@ -3,8 +3,6 @@ use crate::processlib::Process;
 use winapi::um::{winnt};
 use winapi::shared::minwindef;
 
-use winapi::um::winuser::{MB_OK, MessageBoxW};
-
 #[derive(Copy, Clone)]
 pub enum AddrSize {
     Byte(u8),
