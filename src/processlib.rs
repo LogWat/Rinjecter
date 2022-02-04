@@ -16,8 +16,9 @@ pub struct Process {
 #[derive(Getters)]
 #[get = "pub"]
 pub struct Module {
-    pub base_address: u32,
-    pub size: u32,
+    pub handle: winnt::HANDLE,
+    pub name: OsString,
+    pub path: OsString,
 }
 
 #[derive(Getters)]
@@ -94,7 +95,7 @@ impl Process {
         }
     }
 
-    pub fn get_module(&self, module_name: &str) -> Result<Module, &'static str> {
+    pub fn get_module_from_path(&self, path_name: &str) -> Result<Module, &'static str> {
         let module = unsafe { 
             tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) 
         };
@@ -114,11 +115,19 @@ impl Process {
                     continue;
                 },
             };
-            if name.contains(module_name) {
-                unsafe { handleapi::CloseHandle(module) };
+            let path = OsString::from_wide(&module_entry.szExePath[..]).into_string();
+            let path = match path {
+                Ok(s) => s,
+                Err(_) => {
+                    eprintln!("Failed to convert OsString to String.");
+                    continue;
+                },
+            };
+            if path.contains(path_name) {
                 return Ok(Module {
-                    base_address: module_entry.modBaseAddr as _,
-                    size: module_entry.modBaseSize as _,
+                    handle: module,
+                    name: name.into(),
+                    path: path.into(),
                 });
             }
         }
@@ -162,4 +171,9 @@ impl Module {
     pub unsafe fn write<T>(&self, address: u32, value: T) {
         *(address as *mut T) = value;
     }
+}
+
+impl Thread {
+
+    
 }
