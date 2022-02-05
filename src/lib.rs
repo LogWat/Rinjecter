@@ -30,7 +30,13 @@ pub extern "stdcall" fn DllMain(
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 let process = Process::current_process();
-                let _ = dbg::Get_Thread_Owner_PID(&process);
+                match dbg::Get_Thread_Owner_PID(&process) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        let err = format!("{:?}\0", e);
+                        err_msgbox(err);
+                    }
+                }
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
                     Err(e) => {
