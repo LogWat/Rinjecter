@@ -98,7 +98,7 @@ impl Process {
         }
     }
 
-    pub fn get_module_from_path(&self, path_name: &str) -> Result<Module, &'static str> {
+    pub fn get_module_from_path(&self, path_name: &str) -> Result<Vec<Module>, &'static str> {
         let module = unsafe { 
             tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) 
         };
@@ -108,6 +108,7 @@ impl Process {
 
         let mut module_entry: tlhelp32::MODULEENTRY32W = unsafe { mem::zeroed() };
         module_entry.dwSize = mem::size_of::<tlhelp32::MODULEENTRY32W>() as _;
+        let mut module_list: Vec<Module> = Vec::new();
 
         while unsafe { tlhelp32::Module32NextW(module, &mut module_entry) } != 0 {
             let name = OsString::from_wide(&module_entry.szModule[..]).into_string();
@@ -128,17 +129,19 @@ impl Process {
             };
             if path.contains(path_name) {
                 unsafe { handleapi::CloseHandle(module) };
-                return Ok(Module {
-                    handle: module_entry.hModule,
-                    name: name.into(),
-                    path: path.into(),
-                    base_addr: module_entry.modBaseAddr as u32,
-                    size: module_entry.modBaseSize as u32,
-                });
+                module_list.push(
+                    Module {
+                        handle: module_entry.hModule,
+                        name: OsString::from(name),
+                        path: OsString::from(path),
+                        base_addr: module_entry.modBaseAddr as u32,
+                        size: module_entry.modBaseSize as u32,
+                    }
+                );
             }
         }
         unsafe { handleapi::CloseHandle(module) };
-        Err("Failed to find module.")
+        Ok(module_list)
     }
 
     pub fn get_threadlist(&self) -> Result<Vec<Thread>, &'static str> {
