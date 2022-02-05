@@ -154,30 +154,31 @@ impl Process {
         }
 
         while unsafe { tlhelp32::Thread32Next(thread_list, &mut thread_entry) } != 0 {
-            let handle = unsafe { processthreadsapi::OpenThread(winnt::THREAD_ALL_ACCESS, 0, thread_entry.th32ThreadID) };
-            if handle == handleapi::INVALID_HANDLE_VALUE {
-                return Err("Failed to open thread.");
-            }
-            // Get thread entry point
-            let mut thread_basic_info: ntpsapi::THREAD_BASIC_INFORMATION = unsafe { mem::zeroed() };
-            let mut return_length: u32 = 0;
-            if unsafe {
-                ntpsapi::NtQueryInformationThread(
+            if thread_entry.th32OwnerProcessID == self.pid {
+                let handle = unsafe { processthreadsapi::OpenThread(winnt::THREAD_ALL_ACCESS, 0, thread_entry.th32ThreadID) };
+                if handle == handleapi::INVALID_HANDLE_VALUE {
+                    return Err("Failed to open thread.");
+                }
+                // Get thread entry point
+                let mut dw_start_addr: minwindef::DWORD = 0;
+                if unsafe {
+                    ntpsapi::NtQueryInformationThread(
+                        handle,
+                        ntpsapi::ThreadQuerySetWin32StartAddress,
+                        &mut dw_start_addr as *mut _ as _,
+                        mem::size_of::<minwindef::DWORD>() as _,
+                        &mut 0 as *mut _ as _,
+                    )
+                } != 0 {
+                    continue;
+                }
+                
+                threads.push(Thread {
                     handle,
-                    0,
-                    &mut thread_basic_info as *mut _ as _,
-                    mem::size_of::<ntpsapi::THREAD_BASIC_INFORMATION>() as _,
-                    &mut return_length as *mut _ as _,
-                )
-            } != 0 {
-                return Err("Failed to get thread info.");
+                    tid: thread_entry.th32ThreadID,
+                    entry_point: dw_start_addr as u32,
+                });
             }
-            
-            threads.push(Thread {
-                handle,
-                tid: thread_entry.th32ThreadID,
-
-            });
         }
         unsafe { handleapi::CloseHandle(thread_list) };
         Ok(threads)
