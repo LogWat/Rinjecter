@@ -2,6 +2,7 @@ use getset::Getters;
 use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt};
 use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt};
 use winapi::shared::minwindef;
+use ntapi::ntpsapi;
 
 use crate::overwrite::AddrSize;
 
@@ -28,6 +29,7 @@ pub struct Module {
 pub struct Thread {
     pub handle: winnt::HANDLE,
     pub tid: u32,
+    pub entry_point: u32,
 }
 
 impl Process {
@@ -156,9 +158,25 @@ impl Process {
             if handle == handleapi::INVALID_HANDLE_VALUE {
                 return Err("Failed to open thread.");
             }
+            // Get thread entry point
+            let mut thread_basic_info: ntpsapi::THREAD_BASIC_INFORMATION = unsafe { mem::zeroed() };
+            let mut return_length: u32 = 0;
+            if unsafe {
+                ntpsapi::NtQueryInformationThread(
+                    handle,
+                    0,
+                    &mut thread_basic_info as *mut _ as _,
+                    mem::size_of::<ntpsapi::THREAD_BASIC_INFORMATION>() as _,
+                    &mut return_length as *mut _ as _,
+                )
+            } != 0 {
+                return Err("Failed to get thread info.");
+            }
+            
             threads.push(Thread {
                 handle,
                 tid: thread_entry.th32ThreadID,
+
             });
         }
         unsafe { handleapi::CloseHandle(thread_list) };
