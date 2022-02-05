@@ -12,6 +12,7 @@ libc = "*"
 rand = "0.8.4"
 getset = "0.1.0"
 failure = "0.1.0"
+ntapi = "0.3.6"
 
 [lib]
 path = "src/lib.rs"
