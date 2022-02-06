@@ -190,7 +190,6 @@ impl Module {
 }
 
 impl Thread {
-
     pub fn terminate(&self) -> Result<(), &'static str> {
         if unsafe { processthreadsapi::TerminateThread(self.handle, 0) } == 0 {
             return Err("Failed to terminate thread.");
@@ -203,5 +202,21 @@ impl Thread {
             return Err("Failed to suspend thread.");
         }
         Ok(())
+    }
+
+    pub fn base_addr(&self) -> Result<u32, &'static str> {
+        let mut dw_start_addr: minwindef::DWORD = 0;
+        if unsafe {
+            ntpsapi::NtQueryInformationThread(
+                self.handle,
+                ntpsapi::ThreadQuerySetWin32StartAddress,
+                &mut dw_start_addr as *mut _ as _,
+                mem::size_of::<minwindef::DWORD>() as _,
+                &mut 0 as *mut _ as _,
+            )
+        } != 0 {
+            return Err("Failed to get thread entry point.");
+        }
+        Ok(dw_start_addr as u32)
     }
 }
