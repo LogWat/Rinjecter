@@ -161,20 +161,6 @@ impl Process {
                 if handle == handleapi::INVALID_HANDLE_VALUE {
                     continue;
                 }
-                // Get thread entry point
-                let mut dw_start_addr: minwindef::DWORD = 0;
-                if unsafe {
-                    ntpsapi::NtQueryInformationThread(
-                        handle,
-                        ntpsapi::ThreadQuerySetWin32StartAddress,
-                        &mut dw_start_addr as *mut _ as _,
-                        mem::size_of::<minwindef::DWORD>() as _,
-                        &mut 0 as *mut _ as _,
-                    )
-                } != 0 {
-                    continue;
-                }
-                
                 threads.push(Thread {
                     handle,
                     tid: thread_entry.th32ThreadID,
