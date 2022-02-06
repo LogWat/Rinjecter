@@ -160,7 +160,7 @@ impl Process {
             if thread_entry.th32OwnerProcessID == self.pid {
                 let handle = unsafe { processthreadsapi::OpenThread(winnt::THREAD_ALL_ACCESS, 0, thread_entry.th32ThreadID) };
                 if handle == handleapi::INVALID_HANDLE_VALUE {
-                    return Err("Failed to open thread.");
+                    continue;
                 }
                 // Get thread entry point
                 let mut dw_start_addr: minwindef::DWORD = 0;
