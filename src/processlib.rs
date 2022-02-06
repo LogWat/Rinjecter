@@ -190,4 +190,18 @@ impl Module {
 }
 
 impl Thread {
+
+    pub fn terminate(&self) -> Result<(), &'static str> {
+        if unsafe { processthreadsapi::TerminateThread(self.handle, 0) } == 0 {
+            return Err("Failed to terminate thread.");
+        }
+        Ok(())
+    }
+
+    pub fn suspend(&self) -> Result<(), &'static str> {
+        if unsafe { processthreadsapi::SuspendThread(self.handle) } == 0 {
+            return Err("Failed to suspend thread.");
+        }
+        Ok(())
+    }
 }
