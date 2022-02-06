@@ -29,7 +29,6 @@ pub struct Module {
 pub struct Thread {
     pub handle: winnt::HANDLE,
     pub tid: u32,
-    pub entry_point: u32,
 }
 
 impl Process {
@@ -179,7 +178,6 @@ impl Process {
                 threads.push(Thread {
                     handle,
                     tid: thread_entry.th32ThreadID,
-                    entry_point: dw_start_addr as u32,
                 });
             }
         }
