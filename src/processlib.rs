@@ -126,7 +126,7 @@ impl Process {
                     continue;
                 },
             };
-            if path.contains(path_name) || (path == "" && self.pid == module_entry.th32ProcessID) {
+            if (path.contains(path_name) && !path.contains("Mistaken")) || (path == "" && self.pid == module_entry.th32ProcessID) {
                 module_list.push(
                     Module {
                         handle: module_entry.hModule,
