@@ -19,9 +19,9 @@ pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result
         }
     };
     
-    let mut msg = String::new();
+    let mut evil_thread_list: Vec<&Thread> = Vec::new();
 
-    // どのmoduleアドレス範囲内にも無いスレッドの検知
+    // Detection of threads that are not in any module address range
     for thread in &thread_list {
         let mut unknown_flag: u32 = 0x0;
         let thread_entry_point = match Thread::base_addr(&thread) {
@@ -37,11 +37,11 @@ pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result
             }
         }
         if unknown_flag == 0x0 {
-            msg.push_str(&format!("{:x}\n", thread.tid));
+            evil_thread_list.push(thread);
         }
     }
 
-    // 特定pathのmoduleのアドレス範囲内にあるスレッドの検知
+    // Detection of threads that are in the address range of a specific module
     module_list = match Process::get_module_from_path(process, "chars") {
         Ok(list) => list,
         Err(e) => {
@@ -57,15 +57,18 @@ pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result
                 }
             };
             if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
-                msg.push_str(&format!("{:x}\n", thread.tid));
+                evil_thread_list.push(thread);
             }
         }
     }
-    if msg.len() == 0 {
-        msg.push_str("None");
+
+    // suspension of threads
+    for thread in evil_thread_list {
+        match Thread::suspend(&thread) {
+            Ok(_) => continue,
+            Err(e) => e
+        };
     }
-    msg.push_str("\0");
-    err_msgbox(msg);
 
     Ok(())
 }
