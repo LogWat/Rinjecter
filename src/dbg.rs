@@ -12,7 +12,7 @@ pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result
         }
     };
 
-    let module_list: Vec<Module> = match Process::get_module_from_path(process, "chars") {
+    let mut module_list: Vec<Module> = match Process::get_module_from_path(process, "") {
         Ok(list) => list,
         Err(e) => {
             return Err(e);
@@ -20,7 +20,9 @@ pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result
     };
     
     let mut msg = String::new();
-    for thread in thread_list {
+
+    // どのmoduleアドレス範囲内にも無いスレッドの検知
+    for thread in &thread_list {
         let mut unknown_flag: u32 = 0x0;
         let thread_entry_point = match Thread::base_addr(&thread) {
             Ok(addr) => addr,
@@ -36,6 +38,27 @@ pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result
         }
         if unknown_flag == 0x0 {
             msg.push_str(&format!("{:x}\n", thread.tid));
+        }
+    }
+
+    // 特定pathのmoduleのアドレス範囲内にあるスレッドの検知
+    module_list = match Process::get_module_from_path(process, "chars") {
+        Ok(list) => list,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    for module in module_list {
+        for thread in &thread_list {
+            let thread_entry_point = match Thread::base_addr(&thread) {
+                Ok(addr) => addr,
+                Err(e) => {
+                    return Err(e);
+                }
+            };
+            if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
+                msg.push_str(&format!("{:x}\n", thread.tid));
+            }
         }
     }
     if msg.len() == 0 {

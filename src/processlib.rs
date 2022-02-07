@@ -126,8 +126,7 @@ impl Process {
                     continue;
                 },
             };
-            if path.contains(path_name) {
-                unsafe { handleapi::CloseHandle(module) };
+            if path.contains(path_name) || (path == "" && self.pid == module_entry.th32ProcessID) {
                 module_list.push(
                     Module {
                         handle: module_entry.hModule,
