@@ -175,6 +175,17 @@ impl Module {
 }
 
 impl Thread {
+    pub fn open_thread(tid: u32) -> Result<Self, &'static str> {
+        let handle = unsafe { processthreadsapi::OpenThread(winnt::THREAD_ALL_ACCESS, 0, tid) };
+        if handle == handleapi::INVALID_HANDLE_VALUE {
+            return Err("Failed to open thread.");
+        }
+        Ok(Thread {
+            handle,
+            tid,
+        })
+    }
+
     pub fn terminate(&self) -> Result<(), &'static str> {
         if unsafe { processthreadsapi::TerminateThread(self.handle, 0) } == 0 {
             return Err("Failed to terminate thread.");
