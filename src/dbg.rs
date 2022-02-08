@@ -1,9 +1,9 @@
-use crate::processlib::{Process, Module, Thread};
+use crate::processlib::{Process};
 use crate::ffi_helpers;
 use winapi::um::{winnt, processthreadsapi, winbase, securitybaseapi};
 use std::{mem};
 
-struct Debugger {
+pub struct Debugger {
     pub process: Process,
     pub token: winnt::HANDLE,
     pub luid: winnt::LUID
