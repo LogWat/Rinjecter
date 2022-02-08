@@ -1,6 +1,6 @@
 use crate::processlib::{Process, Module, Thread};
 use crate::ffi_helpers;
-use winapi::um::{winnt, processthreadsapi, winbase};
+use winapi::um::{winnt, processthreadsapi, winbase, securitybaseapi};
 use std::{mem};
 
 struct Debugger {
@@ -37,5 +37,29 @@ impl Debugger {
         }
 
         Ok(Self { process, token, luid })
+    }
+
+    pub fn set_privilege(&self) -> Result<(), &'static str> {
+        let luid_and_attributes = winnt::LUID_AND_ATTRIBUTES {
+            Luid: self.luid,
+            Attributes: winnt::SE_PRIVILEGE_ENABLED,
+        };
+        let mut token_privileges: winnt::TOKEN_PRIVILEGES = unsafe { mem::zeroed() };
+        token_privileges.PrivilegeCount = 1;
+        token_privileges.Privileges[0] = luid_and_attributes;
+        if unsafe {
+            securitybaseapi::AdjustTokenPrivileges(
+                self.token,
+                0,
+                &mut token_privileges,
+                0,
+                0 as *mut _,
+                0 as *mut _
+            )
+        } == 0 {
+            return Err("Failed to adjust token privileges.");
+        }
+
+        Ok(())
     }
 }
