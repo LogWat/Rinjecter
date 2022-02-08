@@ -5,8 +5,9 @@ extern crate winapi;
 
 mod processlib;
 mod overwrite;
-// mod dbg;
+mod dbg;
 mod threadpool;
+mod ffi_helpers;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, libloaderapi, processthreadsapi};
