@@ -126,7 +126,7 @@ impl Process {
                     continue;
                 },
             };
-            if (path.contains(path_name) && !path.contains("Mistaken")) || (path == "" && self.pid == module_entry.th32ProcessID) {
+            if path.contains(path_name) || (path == "" && self.pid == module_entry.th32ProcessID) {
                 module_list.push(
                     Module {
                         handle: module_entry.hModule,
@@ -168,6 +168,14 @@ impl Process {
         }
         unsafe { handleapi::CloseHandle(thread_list) };
         Ok(threads)
+    }
+
+    pub fn get_current_thread_id(&self) -> Result<u32, &'static str> {
+        let thread_id = unsafe { processthreadsapi::GetCurrentThreadId() };
+        if thread_id == 0 {
+            return Err("Failed to get current thread id.");
+        }
+        Ok(thread_id)
     }
 }
 
