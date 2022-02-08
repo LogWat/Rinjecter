@@ -16,7 +16,7 @@ pub struct OverWrite {
     pub byte: AddrSize,
 }
 
-pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'static str> {
+pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
 
     let rb1: [u32; 21] = [
         0x4C4300A1, 0x430005C7, 0x43001589, 0x43003D83, 
@@ -130,7 +130,7 @@ pub unsafe extern "stdcall" fn OverWrite(process: &Process) -> Result<(), &'stat
     Ok(())
 }
 
-pub unsafe extern "stdcall" fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), &'static str> {
+pub unsafe fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), &'static str> {
 
     let min_addr = ovw_list.iter().map(|ovw| ovw.addr).min().unwrap();
     let max_addr = ovw_list.iter().map(|ovw| ovw.addr).max().unwrap();
