@@ -135,7 +135,7 @@ unsafe fn suspend_thread(process: &Process, thread_list: &Vec<Thread>, module_li
 
     // suspension of threads
     for thread in evil_thread_list {
-        match thread.terminate() {
+        match thread.suspend() {
             Ok(_) => {
                 continue;
             }
