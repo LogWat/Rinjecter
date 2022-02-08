@@ -1,74 +1,41 @@
 use crate::processlib::{Process, Module, Thread};
+use crate::ffi_helpers;
+use winapi::um::{winnt, processthreadsapi, winbase};
+use std::{mem};
 
-use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt};
-use winapi::shared::minwindef;
-use winapi::um::winuser::{MB_OK, MessageBoxW};
+struct Debugger {
+    pub process: Process,
+    pub token: winnt::HANDLE,
+    pub luid: winnt::LUID
+}
 
-pub unsafe extern "stdcall" fn Get_Thread_Owner_PID(process: &Process) -> Result<(), &'static str> {
-    let thread_list: Vec<Thread> =  match Process::get_threadlist(process) {
-        Ok(list) => list,
-        Err(e) => {
-            return Err(e);
-        }
-    };
+impl Debugger {
+    pub fn new() -> Result<Self, &'static str> {
+        let process = Process::current_process();
 
-    let mut module_list: Vec<Module> = match Process::get_module_from_path(process, "") {
-        Ok(list) => list,
-        Err(e) => {
-            return Err(e);
+        let mut token: winnt::HANDLE = std::ptr::null_mut();
+        if unsafe {
+            processthreadsapi::OpenProcessToken(
+                process.handle,
+                winnt::TOKEN_ALL_ACCESS,
+                &mut token
+            )
+        } == 0 {
+            return Err("Failed to open process token.");
         }
-    };
-    
-    let mut evil_thread_list: Vec<&Thread> = Vec::new();
 
-    // Detection of threads that are not in any module address range
-    for thread in &thread_list {
-        let mut unknown_flag: u32 = 0x0;
-        let thread_entry_point = match Thread::base_addr(&thread) {
-            Ok(addr) => addr,
-            Err(e) => {
-                return Err(e);
-            }
-        };
-        for module in &module_list {
-            if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
-                unknown_flag = 0x1;
-                break;
-            }
+        let mut luid: winnt::LUID = unsafe { mem::zeroed() };
+        let privilege = ffi_helpers::win32_to_utf16("seDebugPrivilege");
+        if unsafe {
+            winbase::LookupPrivilegeValueW(
+                0 as *mut _,
+                privilege.as_ptr(),
+                &mut luid
+            )
+        } == 0 {
+            return Err("Failed to lookup privilege value.");
         }
-        if unknown_flag == 0x0 {
-            evil_thread_list.push(thread);
-        }
+
+        Ok(Self { process, token, luid })
     }
-
-    // Detection of threads that are in the address range of a specific module
-    module_list = match Process::get_module_from_path(process, "chars") {
-        Ok(list) => list,
-        Err(e) => {
-            return Err(e);
-        }
-    };
-    for module in module_list {
-        for thread in &thread_list {
-            let thread_entry_point = match Thread::base_addr(&thread) {
-                Ok(addr) => addr,
-                Err(e) => {
-                    return Err(e);
-                }
-            };
-            if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
-                evil_thread_list.push(thread);
-            }
-        }
-    }
-
-    // suspension of threads
-    for thread in evil_thread_list {
-        match Thread::suspend(&thread) {
-            Ok(_) => continue,
-            Err(e) => e
-        };
-    }
-
-    Ok(())
 }
