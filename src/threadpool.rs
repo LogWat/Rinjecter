@@ -1,4 +1,5 @@
 use crate::processlib::{Process, Module, Thread};
+use crate::dbg::{Debugger};
 
 use std::{mem};
 use winapi::um::{minwinbase, winnt, debugapi, winbase};
@@ -6,28 +7,40 @@ use winapi::um::{minwinbase, winnt, debugapi, winbase};
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 
 pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 {
-    let process = Process::current_process();
+    let debugger: Debugger = match Debugger::new() {
+        Ok(d) => d,
+        Err(_e) => {
+            return 0x1;
+        }
+    };
+    match debugger.set_privilege() {
+        Ok(_) => {},
+        Err(_e) => {
+            return 0x1;
+        }
+    };
 
-    let mut thread_list: Vec<Thread> = match Process::get_threadlist(&process) {
+
+    let mut thread_list: Vec<Thread> = match Process::get_threadlist(&debugger.process) {
         Ok(list) => list,
         Err(_e) => {
             return 0x1;
         }
     };
-    let mut module_list: Vec<Module> = match Process::get_module_from_path(&process, "") {
+    let mut module_list: Vec<Module> = match Process::get_module_from_path(&debugger.process, "") {
         Ok(list) => list,
         Err(_e) => {
             return 0x1;
         }
     };
-    let mut specific_module_list = match Process::get_module_from_path(&process, "chars") {
+    let mut specific_module_list = match Process::get_module_from_path(&debugger.process, "chars") {
         Ok(list) => list,
         Err(_e) => {
             return 0x1;
         }
     };
     
-    match suspend_thread(&process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+    match suspend_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
         Ok(_) => {
         },
         Err(_e) => {
@@ -42,13 +55,13 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
     loop {
         if debugapi::WaitForDebugEvent(&mut debug_event, winbase::INFINITE) != 0 {
             if debug_event.dwDebugEventCode == minwinbase::LOAD_DLL_DEBUG_EVENT {
-                module_list = match Process::get_module_from_path(&process, "") {
+                module_list = match Process::get_module_from_path(&debugger.process, "") {
                     Ok(list) => list,
                     Err(_e) => {
                         return 0x1;
                     }
                 };
-                specific_module_list = match Process::get_module_from_path(&process, "chars") {
+                specific_module_list = match Process::get_module_from_path(&debugger.process, "chars") {
                     Ok(list) => list,
                     Err(_e) => {
                         return 0x1;
@@ -65,7 +78,7 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
                 };
             }
     
-            match suspend_thread(&process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+            match suspend_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
                 Ok(_) => {},
                 Err(_e) => {
                     return 0x1;
