@@ -76,6 +76,7 @@ impl Process {
         return Ok(oldp);
     }
 
+    #[allow(dead_code)]
     pub unsafe fn read<T>(&self, address: u32, _size: T) -> &T {
         &*(address as *const T)
     }
@@ -194,6 +195,7 @@ impl Thread {
         })
     }
 
+    #[allow(dead_code)]
     pub fn terminate(&self) -> Result<(), &'static str> {
         if unsafe { processthreadsapi::TerminateThread(self.handle, 0) } == 0 {
             return Err("Failed to terminate thread.");
