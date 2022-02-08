@@ -3,79 +3,87 @@ use crate::processlib::{Process, Module, Thread};
 use std::{mem};
 use winapi::um::{minwinbase, winnt, debugapi, winbase};
 
-pub unsafe extern "stdcall" fn Thread_Checker() -> Result<(), &'static str> {
+use winapi::um::winuser::{MB_OK, MessageBoxW};
+
+pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 {
     let process = Process::current_process();
 
     let mut thread_list: Vec<Thread> = match Process::get_threadlist(&process) {
         Ok(list) => list,
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     };
     let mut module_list: Vec<Module> = match Process::get_module_from_path(&process, "") {
         Ok(list) => list,
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     };
     let mut specific_module_list = match Process::get_module_from_path(&process, "chars") {
         Ok(list) => list,
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     };
     
-    match suspend_thread(&mut thread_list, &mut module_list, &mut specific_module_list) {
-        Ok(_) => {},
-        Err(e) => {
-            return Err(e);
+    match suspend_thread(&process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+        Ok(_) => {
+        },
+        Err(_e) => {
+            return 0x1;
         }
     };
 
     let mut debug_event: minwinbase::DEBUG_EVENT = mem::zeroed();
     let continue_flag: u32 = winnt::DBG_CONTINUE;
 
-    if debugapi::WaitForDebugEvent(&mut debug_event, winbase::INFINITE) != 0 {
-        if debug_event.dwDebugEventCode == minwinbase::LOAD_DLL_DEBUG_EVENT {
-            module_list = match Process::get_module_from_path(&process, "") {
-                Ok(list) => list,
-                Err(e) => {
-                    return Err(e);
-                }
-            };
-            specific_module_list = match Process::get_module_from_path(&process, "chars") {
-                Ok(list) => list,
-                Err(e) => {
-                    return Err(e);
-                }
-            };
-        }
-
-        if debug_event.dwDebugEventCode == minwinbase::CREATE_THREAD_DEBUG_EVENT {
-            match Thread::open_thread(debug_event.dwThreadId) {
-                Ok(thread) => thread_list.push(thread),
-                Err(e) => {
-                    return Err(e);
-                }
-            };
-        }
-
-        match suspend_thread(&mut thread_list, &mut module_list, &mut specific_module_list) {
-            Ok(_) => {},
-            Err(e) => {
-                return Err(e);
+    // Detection of loading DLL or create Thread
+    loop {
+        if debugapi::WaitForDebugEvent(&mut debug_event, winbase::INFINITE) != 0 {
+            if debug_event.dwDebugEventCode == minwinbase::LOAD_DLL_DEBUG_EVENT {
+                module_list = match Process::get_module_from_path(&process, "") {
+                    Ok(list) => list,
+                    Err(_e) => {
+                        return 0x1;
+                    }
+                };
+                specific_module_list = match Process::get_module_from_path(&process, "chars") {
+                    Ok(list) => list,
+                    Err(_e) => {
+                        return 0x1;
+                    }
+                };
             }
-        };
-
-        debugapi::ContinueDebugEvent(debug_event.dwProcessId, debug_event.dwThreadId, continue_flag);
+    
+            if debug_event.dwDebugEventCode == minwinbase::CREATE_THREAD_DEBUG_EVENT {
+                match Thread::open_thread(debug_event.dwThreadId) {
+                    Ok(thread) => thread_list.push(thread),
+                    Err(_e) => {
+                        return 0x1;
+                    }
+                };
+            }
+    
+            match suspend_thread(&process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+                Ok(_) => {},
+                Err(_e) => {
+                    return 0x1;
+                }
+            };
+    
+            debugapi::ContinueDebugEvent(debug_event.dwProcessId, debug_event.dwThreadId, continue_flag);
+        }
     }
-
-    Ok(())
 }
 
-unsafe extern "stdcall" fn suspend_thread(thread_list: &Vec<Thread>, module_list: &Vec<Module>, specific_module_list: &Vec<Module>) -> Result<(), &'static str> {
+unsafe fn suspend_thread(process: &Process, thread_list: &Vec<Thread>, module_list: &Vec<Module>, specific_module_list: &Vec<Module>) -> Result<(), &'static str> {
 
     let mut evil_thread_list: Vec<&Thread> = Vec::new();
+    let current_tid = match Process::get_current_thread_id(process) {
+        Ok(tid) => tid,
+        Err(e) => return Err(e),
+    };
 
     // Detection of threads that are not in any module address range
     for thread in thread_list {
@@ -93,7 +101,9 @@ unsafe extern "stdcall" fn suspend_thread(thread_list: &Vec<Thread>, module_list
             }
         }
         if unknown_flag == 0x0 {
-            evil_thread_list.push(thread);
+            if thread.tid != current_tid {
+                evil_thread_list.push(&thread);
+            }
         }
     }
 
@@ -106,14 +116,26 @@ unsafe extern "stdcall" fn suspend_thread(thread_list: &Vec<Thread>, module_list
                 }
             };
             if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
-                evil_thread_list.push(thread);
+                if thread.tid != current_tid {
+                    evil_thread_list.push(&thread);
+                }
             }
         }
     }
 
+    let mut msg: String = String::new();
+    for thread in &evil_thread_list {
+        msg.push_str(&format!("{:x}\n", thread.tid));
+    }
+    if msg.len() == 0 {
+        msg.push_str("None");
+    }
+    msg.push_str("\0");
+    err_msgbox(msg);
+
     // suspension of threads
     for thread in evil_thread_list {
-        match thread.suspend() {
+        match thread.terminate() {
             Ok(_) => {
                 continue;
             }
@@ -124,4 +146,17 @@ unsafe extern "stdcall" fn suspend_thread(thread_list: &Vec<Thread>, module_list
     }
 
     Ok(())
+}
+
+unsafe fn err_msgbox(text: String) {
+    let lp_text: Vec<u16> = text.encode_utf16().collect();
+    let caption = "⚠Error⚠\0".to_string();
+    let lp_caption: Vec<u16> = caption.encode_utf16().collect();
+
+    MessageBoxW(
+        std::ptr::null_mut(),
+        lp_text.as_ptr(),
+        lp_caption.as_ptr(),
+        MB_OK
+    );
 }

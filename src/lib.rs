@@ -5,11 +5,11 @@ extern crate winapi;
 
 mod processlib;
 mod overwrite;
-mod dbg;
+// mod dbg;
 mod threadpool;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, libloaderapi};
+use winapi::um::{winnt::*, libloaderapi, processthreadsapi};
 use winapi::shared::minwindef::*;
 
 use processlib::Process;
@@ -31,13 +31,14 @@ pub extern "stdcall" fn DllMain(
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
                 let process = Process::current_process();
-                match dbg::Get_Thread_Owner_PID(&process) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        let err = format!("{:?}\0", e);
-                        err_msgbox(err);
-                    }
-                }
+                processthreadsapi::CreateThread(
+                    0 as *mut _,
+                    0,
+                    Some(threadpool::Thread_Checker),
+                    0 as *mut _,
+                    0,
+                    0 as *mut _
+                );
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
                     Err(e) => {
@@ -106,7 +107,7 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
     false
 }
 
-unsafe extern "stdcall" fn err_msgbox(text: String) {
+unsafe fn err_msgbox(text: String) {
     let lp_text: Vec<u16> = text.encode_utf16().collect();
     let caption = "⚠Error⚠\0".to_string();
     let lp_caption: Vec<u16> = caption.encode_utf16().collect();
