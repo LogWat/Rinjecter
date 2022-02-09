@@ -1,6 +1,7 @@
 use crate::processlib::{Process};
 use crate::ffi_helpers;
-use winapi::um::{winnt, processthreadsapi, winbase, securitybaseapi, debugapi};
+use winapi::um::{winnt, processthreadsapi, winbase, securitybaseapi, debugapi, errhandlingapi};
+use winapi::shared::minwindef::{DWORD};
 use std::{mem};
 
 pub struct Debugger {
@@ -39,11 +40,22 @@ impl Debugger {
         Ok(Self { process, token, luid })
     }
 
-    pub fn attach(&self) -> Result<(), &'static str> {
+    pub fn attach(&mut self) -> Result<(), DWORD> {
+        self.process.handle = unsafe { 
+            processthreadsapi::OpenProcess(
+                winnt::PROCESS_ALL_ACCESS,
+                0,
+                self.process.pid
+            ) 
+        };
+        if self.process.handle == std::ptr::null_mut() {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
         if unsafe {
             debugapi::DebugActiveProcess(self.process.pid)
         } == 0 {
-            return Err("Failed to attach to process.");
+            return Err(unsafe { errhandlingapi::GetLastError() });
         }
 
         Ok(())
