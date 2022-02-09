@@ -48,6 +48,14 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
         }
     };
 
+    match debugger.attach() {
+        Ok(_) => {
+        },
+        Err(_e) => {
+            return 0x1;
+        }
+    };
+
     let mut debug_event: minwinbase::DEBUG_EVENT = mem::zeroed();
     let continue_flag: u32 = winnt::DBG_CONTINUE;
 

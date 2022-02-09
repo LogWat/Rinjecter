@@ -1,6 +1,6 @@
 use crate::processlib::{Process};
 use crate::ffi_helpers;
-use winapi::um::{winnt, processthreadsapi, winbase, securitybaseapi};
+use winapi::um::{winnt, processthreadsapi, winbase, securitybaseapi, debugapi};
 use std::{mem};
 
 pub struct Debugger {
@@ -37,6 +37,16 @@ impl Debugger {
         }
 
         Ok(Self { process, token, luid })
+    }
+
+    pub fn attach(&self) -> Result<(), &'static str> {
+        if unsafe {
+            debugapi::DebugActiveProcess(self.process.pid)
+        } == 0 {
+            return Err("Failed to attach to process.");
+        }
+
+        Ok(())
     }
 
     pub fn set_privilege(&self) -> Result<(), &'static str> {
