@@ -62,28 +62,34 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
     // Detection of loading DLL or create Thread
     loop {
         if debugapi::WaitForDebugEvent(&mut debug_event, winbase::INFINITE) != 0 {
-            if debug_event.dwDebugEventCode == minwinbase::LOAD_DLL_DEBUG_EVENT {
-                module_list = match Process::get_module_from_path(&debugger.process, "") {
-                    Ok(list) => list,
-                    Err(_e) => {
-                        return 0x1;
-                    }
-                };
-                specific_module_list = match Process::get_module_from_path(&debugger.process, "chars") {
-                    Ok(list) => list,
-                    Err(_e) => {
-                        return 0x1;
-                    }
-                };
-            }
-    
-            if debug_event.dwDebugEventCode == minwinbase::CREATE_THREAD_DEBUG_EVENT {
-                match Thread::open_thread(debug_event.dwThreadId) {
-                    Ok(thread) => thread_list.push(thread),
-                    Err(_e) => {
-                        return 0x1;
-                    }
-                };
+            match debug_event.dwDebugEventCode {
+                minwinbase::CREATE_THREAD_DEBUG_EVENT => {
+                    match Thread::open_thread(debug_event.dwThreadId) {
+                        Ok(thread) => {
+                            thread_list.push(thread);
+                        },
+                        Err(_e) => {
+                            return 0x1;
+                        }
+                    };
+                },
+                minwinbase::LOAD_DLL_DEBUG_EVENT => {
+                    module_list = match Process::get_module_from_path(&debugger.process, "") {
+                        Ok(list) => list,
+                        Err(_e) => {
+                            return 0x1;
+                        }
+                    };
+                    specific_module_list = match Process::get_module_from_path(&debugger.process, "chars") {
+                        Ok(list) => list,
+                        Err(_e) => {
+                            return 0x1;
+                        }
+                    };
+                },
+                _ => {
+                    continue;
+                }
             }
     
             match suspend_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
