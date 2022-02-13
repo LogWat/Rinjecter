@@ -5,21 +5,25 @@ global _start
 _start:
     pusha
     pushf
-    mov esi, -0x4B5B4C      ; [[[0x4B5B4C]+0xCD0]+0x40C+E30*0x0～0x3]
-    not esi
+    mov esi, 0x4B5B4C      ; [[[0x4B5B4C]+0xCD0]+0x40C+E30*0x0～0x3]
     mov esi, [esi]
-    sub esi, -0xCD0
-    mov esi, [esi]
-    mov edx, esi            ; num of chars
+    sub esi, -0xCD4
+    mov edx, [esi]          ; num of chars
+    mov esi, [esi-0x4]        ; pointer to chars
     sub esi, -0x40C         ; path of the file
     xor ecx, ecx            ; addr index
-    mov edi, -0x4BA010
-    not edi
-    mov dword [edi], "X|fa"
-    mov dword [edi + 0x4], "t~p{"
-    mov byte [edi + 0x8], cl
-    mov dword [edi + 0x9], "dll"
-    mov byte [edi + 0xC], cl
+    mov edi, 0x4BA010
+    mov dword [edi], "lHR"
+    mov dword [edi + 0x4], "U@JD"
+    mov word [edi + 0x8], "O"
+    mov ebx , -0x9
+    not ebx
+    inc ebx
+    inc ebx
+    mov byte [edi + ebx], cl
+    mov dword [edi + 0xB], ".dll"
+    mov byte [edi + 0xF], cl
+    xor ebx, ebx
 _strcontain:
 .loop:
     test edx, edx
@@ -32,8 +36,7 @@ _strcontain:
     cmp al, bl
     je .equal
     inc ecx
-    mov edi, -0x4BA010
-    not edi
+    mov edi, 0x4BA010
     jmp .loop
 .endtoend:
     jmp _end
@@ -49,8 +52,7 @@ _strcontain:
     inc edi
     jmp .loop
 _setdllpath:
-    mov edx, -0x4BA020
-    not edx
+    mov edx, 0x4BA020
 .setpath:
     mov al, [esi]
     test al, al
@@ -60,8 +62,7 @@ _setdllpath:
     inc esi
     jmp .setpath
 .dll:
-    mov ecx, -0x4BA019
-    not ecx
+    mov ecx, 0x4BA01B
 .loop2:
     mov al, [ecx]
     test al, al
@@ -71,31 +72,20 @@ _setdllpath:
     inc ecx
     jmp .loop2
 .calls:
-    mov ebx, -0x49F604
-    not ebx
-    push ebx			        ; kernel32の文字列
-    mov ebx, -0x49F0B8
-    not ebx
-    call dword [ebx]	        ; GetModuleHandleA
+    push dword 0x49F604			; kernel32の文字列
+    call dword [0x49F0B8]	    ; GetModuleHandleA
     test eax, eax
     je _end
-    mov ebx, -0x4C40E0
-    not ebx
-    push ebx 		            ;LoadLibraryAの文字列
+    push dword 0x4C40E0 		;LoadLibraryAの文字列
     push eax
-    mov ebx, -0x49F130
-    not ebx
-    call ebx		            ; GetProcAddress
+    call dword [0x49F130]		; GetProcAddress
     test eax, eax
     je _end
-    mov ebx, -0x4BA020
-    not ebx
-    push ebx                    ; 自分が作成したDLL
+    push dword 0x4BA020         ; 自分が作成したDLL
     call eax
 _end:
     popf
     popa
     sub esp, 0x8
-    mov dword [esp], -0x479B7B
-    not dword [esp]
+    mov dword [esp], 0x479B7B
     ret
