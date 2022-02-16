@@ -6,38 +6,65 @@ use std::{mem};
 
 pub struct Debugger {
     pub process: Process,
-    pub token: winnt::HANDLE,
-    pub luid: winnt::LUID
+    pub isDebuggerAttached: bool,
 }
 
 impl Debugger {
-    pub fn new() -> Result<Self, &'static str> {
+    // Constructor
+    pub fn new() -> Result<Debugger, String> {
         let process = Process::current_process();
+        Ok(Debugger {
+            process,
+            isDebuggerAttached: false,
+        })
+    }
+
+    pub fn set_privilege(&self) -> Result<(), &'static str> {
 
         let mut token: winnt::HANDLE = std::ptr::null_mut();
         if unsafe {
             processthreadsapi::OpenProcessToken(
-                process.handle,
-                winnt::TOKEN_ALL_ACCESS,
+                self.process.handle,
+                winnt::TOKEN_ADJUST_PRIVILEGES | winnt::TOKEN_QUERY,
                 &mut token
             )
         } == 0 {
             return Err("Failed to open process token.");
         }
 
-        let mut luid: winnt::LUID = unsafe { mem::zeroed() };
+        if token == std::ptr::null_mut() {
+            return Err("Failed to open process token.");
+        }
+
+        let mut tkp: winnt::TOKEN_PRIVILEGES = unsafe { mem::zeroed() };
         let privilege = ffi_helpers::win32_to_utf16("seDebugPrivilege");
         if unsafe {
             winbase::LookupPrivilegeValueW(
                 0 as *mut _,
                 privilege.as_ptr(),
-                &mut luid
+                &mut tkp.Privileges[0].Luid
             )
         } == 0 {
             return Err("Failed to lookup privilege value.");
         }
 
-        Ok(Self { process, token, luid })
+        tkp.PrivilegeCount = 1;
+        tkp.Privileges[0].Attributes = winnt::SE_PRIVILEGE_ENABLED;
+
+        if unsafe {
+            securitybaseapi::AdjustTokenPrivileges(
+                token,
+                0,
+                &mut tkp,
+                0,
+                0 as *mut _,
+                0 as *mut _
+            )
+        } == 0 {
+            return Err("Failed to adjust token privileges.");
+        }
+
+        Ok(())
     }
 
     pub fn attach(&mut self) -> Result<(), DWORD> {
@@ -59,29 +86,7 @@ impl Debugger {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
 
-        Ok(())
-    }
-
-    pub fn set_privilege(&self) -> Result<(), &'static str> {
-        let luid_and_attributes = winnt::LUID_AND_ATTRIBUTES {
-            Luid: self.luid,
-            Attributes: winnt::SE_PRIVILEGE_ENABLED,
-        };
-        let mut token_privileges: winnt::TOKEN_PRIVILEGES = unsafe { mem::zeroed() };
-        token_privileges.PrivilegeCount = 1;
-        token_privileges.Privileges[0] = luid_and_attributes;
-        if unsafe {
-            securitybaseapi::AdjustTokenPrivileges(
-                self.token,
-                0,
-                &mut token_privileges,
-                0,
-                0 as *mut _,
-                0 as *mut _
-            )
-        } == 0 {
-            return Err("Failed to adjust token privileges.");
-        }
+        self.isDebuggerAttached = true;
 
         Ok(())
     }
