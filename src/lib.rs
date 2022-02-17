@@ -15,8 +15,10 @@ use winapi::shared::minwindef::*;
 
 use processlib::Process;
 use overwrite::{OverWrite, AddrSize};
+use dbg::{Debugger};
 
 use rand::Rng;
+use std::process::{Command};
 
 const DPATH: u32 = 0x4B5B4C;
 
@@ -31,7 +33,9 @@ pub extern "stdcall" fn DllMain(
         DLL_PROCESS_ATTACH => {
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
+
                 let process = Process::current_process();
+
                 processthreadsapi::CreateThread(
                     0 as *mut _,
                     0,
@@ -68,15 +72,17 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32);
 
     let names: Vec<&[u8]> = vec![
-        b"Hello, World!\0", 
-        b"\\(^o^)/\0", 
-        b"OXOXOXOXOXOXOXOXOXOXOXOXO\0", 
-        b"OMFG! Miko!!!\0",
-        b":D\0",
-        b":P\0",
+        b"]pyyz95Bzgyq4\0", 
+        b"I=KzK<:\0", 
+        b"GQwrrpg\0", 
+        b"ZXSR45X|~z444\0",
+        b"/Q\0",
+        b"/E\0",
         b"\0",
-        b"42\0",
-        b"<!> MISTAKEN <!>\0",
+        b"!'!'!'!'!'!'!'!'!'!'!'!'!'\0",
+        b")4+5X\\FAT^P[5)4+\0",
+        b"A}pl2gp5tyy5vgtol95t{q5lz`5a}|{~5lz`2gp5a}p5z{yl5z{p5b}z2f5{za*\0",
+        b"XF5qzv`xp{ata|z{5|f5gptyyl5f}|aal95qz{2a5lz`5a}|{~*\0",
     ];
 
     for _ in 0..num_of_characters {
@@ -88,10 +94,14 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
             let mut byte_list: Vec<OverWrite> = Vec::new();
 
             for i in 0..names[name_index].len() {
+                let mut d_byte: u8 = '\0' as u8;
+                if names[name_index][i] != '\0' as u8 {
+                    d_byte = names[name_index][i] ^ 21;
+                }
                 byte_list.push(
                     OverWrite {
                         addr: (addr + 0x4 + i as i32) as u32,
-                        byte: AddrSize::Byte(names[name_index][i]),
+                        byte: AddrSize::Byte(d_byte),
                     }
                 );
             }
