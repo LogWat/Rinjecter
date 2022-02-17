@@ -2,24 +2,35 @@ use crate::processlib::{Process, Module, Thread};
 use crate::dbg::{Debugger};
 
 use std::{mem};
-use winapi::um::{minwinbase, winnt, debugapi, winbase};
+use winapi::um::{minwinbase, winnt, debugapi, winbase, errhandlingapi};
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 
 pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 {
-    let debugger: Debugger = match Debugger::new() {
+    let mut debugger: Debugger = match Debugger::new() {
         Ok(d) => d,
         Err(_e) => {
             return 0x1;
         }
     };
+    
     match debugger.set_privilege() {
         Ok(_) => {},
-        Err(_e) => {
-            return 0x1;
+        Err(e) => {
+            panic!("{}", e);
         }
     };
 
+    /*
+    match debugger.attach() {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = format!("[!!!] Failed to attach.\nError Code: {}\0", e);
+            err_msgbox(msg);
+            panic!("{}", e);
+        }
+    };
+    */
 
     let mut thread_list: Vec<Thread> = match Process::get_threadlist(&debugger.process) {
         Ok(list) => list,
@@ -41,14 +52,6 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
     };
     
     match suspend_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
-        Ok(_) => {
-        },
-        Err(_e) => {
-            return 0x1;
-        }
-    };
-
-    match debugger.attach() {
         Ok(_) => {
         },
         Err(_e) => {
@@ -88,7 +91,7 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
                     };
                 },
                 _ => {
-                    continue;
+                    debugapi::ContinueDebugEvent(debug_event.dwProcessId, debug_event.dwThreadId, continue_flag);
                 }
             }
     
@@ -100,6 +103,13 @@ pub unsafe extern "system" fn Thread_Checker(_module: *mut libc::c_void) -> u32 
             };
     
             debugapi::ContinueDebugEvent(debug_event.dwProcessId, debug_event.dwThreadId, continue_flag);
+        } else {
+            let msg = format!("[!!!] Failed to attach.\nError Code: {}\0", errhandlingapi::GetLastError());
+            err_msgbox(msg);
+            /*
+            panic!("Failed to attach to process.");
+            */
+            return 0x1;
         }
     }
 }

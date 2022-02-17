@@ -78,7 +78,6 @@ impl Debugger {
         if self.process.handle == std::ptr::null_mut() {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
-        self.process.pid = unsafe { processthreadsapi::GetProcessId(self.process.handle) };
 
         if unsafe {
             debugapi::DebugActiveProcess(self.process.pid)

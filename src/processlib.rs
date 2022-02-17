@@ -38,6 +38,7 @@ impl Process {
             handle: unsafe { processthreadsapi::GetCurrentProcess() },
         };
         process.pid = unsafe { processthreadsapi::GetProcessId(process.handle) };
+
         process
     }
 
