@@ -72,16 +72,16 @@ _setdllpath:
     inc ecx
     jmp .loop2
 .calls:
-    push dword 0x49F604			; kernel32の文字列
+    push dword 0x49F604			; kernel32
     call dword [0x49F0B8]	    ; GetModuleHandleA
     test eax, eax
     je _end
-    push dword 0x4C40E0 		;LoadLibraryAの文字列
+    push dword 0x4C40E0 		;LoadLibraryA
     push eax
     call dword [0x49F130]		; GetProcAddress
     test eax, eax
     je _end
-    push dword 0x4BA020         ; 自分が作成したDLL
+    push dword 0x4BA020         ; self dll path
     call eax
 _end:
     popf
