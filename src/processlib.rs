@@ -1,7 +1,7 @@
 use getset::Getters;
 use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt};
-use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt};
-use winapi::shared::minwindef;
+use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt, errhandlingapi, psapi};
+use winapi::shared::minwindef::{HMODULE, DWORD, MAX_PATH};
 use ntapi::ntpsapi;
 
 use crate::overwrite::AddrSize;
@@ -17,7 +17,7 @@ pub struct Process {
 #[derive(Getters)]
 #[get = "pub"]
 pub struct Module {
-    pub handle: minwindef::HMODULE,
+    pub handle: HMODULE,
     pub name: OsString,
     pub path: OsString,
     pub base_addr: u32,
@@ -60,8 +60,8 @@ impl Process {
     }
 
     // address: BaseAddr, size: RegionSize, protection: Protect
-    pub fn change_protection(&self, address: u32, protection: minwindef::DWORD, size: u32) -> Result<minwindef::DWORD, &'static str> {
-        let mut oldp: minwindef::DWORD = 0;
+    pub fn change_protection(&self, address: u32, protection: DWORD, size: u32) -> Result<DWORD, &'static str> {
+        let mut oldp: DWORD = 0;
         if unsafe {
             memoryapi::VirtualProtectEx(
                 self.handle,
@@ -179,6 +179,32 @@ impl Process {
         }
         Ok(thread_id)
     }
+
+    pub fn get_process_path(&self) -> Result<String, DWORD> {
+        let mut process_path = [0u16; MAX_PATH];
+        let mut process_path_len = 0;
+        let ret = unsafe {
+            psapi::GetModuleFileNameExW(
+                self.handle,
+                0 as _,
+                process_path.as_mut_ptr() as _,
+                MAX_PATH as _,
+            )
+        };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        process_path_len = ret;
+        let process_path = OsString::from_wide(&process_path[..process_path_len as usize]);
+        let process_path = match process_path.into_string() {
+            Ok(s) => s,
+            Err(_) => {
+                eprintln!("Failed to convert OsString to String.");
+                return Err(unsafe { errhandlingapi::GetLastError() });
+            },
+        };
+        Ok(process_path)
+    }
 }
 
 impl Module {
@@ -212,13 +238,13 @@ impl Thread {
     }
 
     pub fn base_addr(&self) -> Result<u32, &'static str> {
-        let mut dw_start_addr: minwindef::DWORD = 0;
+        let mut dw_start_addr: DWORD = 0;
         if unsafe {
             ntpsapi::NtQueryInformationThread(
                 self.handle,
                 ntpsapi::ThreadQuerySetWin32StartAddress,
                 &mut dw_start_addr as *mut _ as _,
-                mem::size_of::<minwindef::DWORD>() as _,
+                mem::size_of::<DWORD>() as _,
                 &mut 0 as *mut _ as _,
             )
         } != 0 {
