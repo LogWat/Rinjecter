@@ -15,10 +15,8 @@ use winapi::shared::minwindef::*;
 
 use processlib::Process;
 use overwrite::{OverWrite, AddrSize};
-use dbg::{Debugger};
 
 use rand::Rng;
-use std::process::{Command};
 
 const DPATH: u32 = 0x4B5B4C;
 
@@ -83,6 +81,7 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
         b")4+5X\\FAT^P[5)4+\0",
         b"A}pl2gp5tyy5vgtol95t{q5lz`5a}|{~5lz`2gp5a}p5z{yl5z{p5b}z2f5{za*\0",
         b"XF5qzv`xp{ata|z{5|f5gptyyl5f}|aal95qz{2a5lz`5a}|{~*\0",
+        b"\\5q|q{2a5~{zb5|a5btf5ezff|wyp5az5fatga5t5{pb5y|{p5|{5t5{txp\\2cp5{pcpg5}ptgq5zs5|a5wpszgp\\5btf5fz5f`geg|fpq4W`a5a}p{5trt|{95\\5qz{2a5gptyyl5}tcp5az5bg|ap5z{5x`ya|eyp5y|{pfFz5\\2yy5`fa5bg|ap5qzb{5azqtl2f5q|{{pgBtapg95x|fz5fz`e95vg|v~paf;;;\0",
     ];
 
     for _ in 0..num_of_characters {

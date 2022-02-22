@@ -18,7 +18,7 @@ impl Debugger {
             isDebuggerAttached: false,
         })
     }
-
+    
     pub fn set_privilege(&self) -> Result<(), &'static str> {
 
         let mut token: winnt::HANDLE = std::ptr::null_mut();
