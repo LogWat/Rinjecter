@@ -17,6 +17,7 @@ use processlib::{Process, Module};
 use overwrite::{OverWrite, AddrSize};
 
 use rand::Rng;
+use std::process::Command;
 
 const DPATH: u32 = 0x4B5B4C;
 
@@ -58,10 +59,27 @@ pub extern "stdcall" fn DllMain(
                     err_msgbox(msg);
                     return 0x1;
                 }
-                let self_module_path = module[0].path.clone();
+                let self_module_path = match module[0].path.clone().into_string() {
+                    Ok(p) => p,
+                    Err(_e) => {
+                        let msg = format!("[!!!] Failed to get self module path.\0");
+                        err_msgbox(msg);
+                        return 0x1;
+                    }
+                };
 
-                let msg = format!("Process Path: {}\nModule Path: {}\0", process_path, self_module_path.into_string().unwrap());
-                err_msgbox(msg);
+                // set exe path
+                let exe_path = self_module_path.replace(".dll", ".exe");
+
+                // exec
+                let cmd = Command::new(&exe_path)
+                    .spawn();
+                if cmd.is_err() {
+                    let msg = format!("[!!!] Failed to exec.\npath: {}\0", exe_path);
+                    err_msgbox(msg);
+                    return 0x1;
+                }
+                
 
                 processthreadsapi::CreateThread(
                     0 as *mut _,
