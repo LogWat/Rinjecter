@@ -13,7 +13,7 @@ use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, libloaderapi, processthreadsapi};
 use winapi::shared::minwindef::*;
 
-use processlib::Process;
+use processlib::{Process, Module};
 use overwrite::{OverWrite, AddrSize};
 
 use rand::Rng;
@@ -33,6 +33,35 @@ pub extern "stdcall" fn DllMain(
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
 
                 let process = Process::current_process();
+
+                // get process path
+                let process_path: String = match process.get_process_path() {
+                    Ok(p) => p,
+                    Err(_e) => {
+                        let msg = format!("[!!!] Failed to get process path.\0");
+                        err_msgbox(msg);
+                        return 0x1;
+                    }
+                };
+
+                // get self module
+                let module: Vec<Module> = match process.get_module_from_path("Mistaken") {
+                    Ok(m) => m,
+                    Err(_e) => {
+                        let msg = format!("[!!!] Failed to get self module.\0");
+                        err_msgbox(msg);
+                        return 0x1;
+                    }
+                };
+                if module.len() == 0 {
+                    let msg = format!("[!!!] Failed to get self module.\0");
+                    err_msgbox(msg);
+                    return 0x1;
+                }
+                let self_module_path = module[0].path.clone();
+
+                let msg = format!("Process Path: {}\nModule Path: {}\0", process_path, self_module_path.into_string().unwrap());
+                err_msgbox(msg);
 
                 processthreadsapi::CreateThread(
                     0 as *mut _,
