@@ -39,3 +39,28 @@ pub fn CreateProcess(
 
     Ok(pi.hProcess)
 }
+
+pub fn CreateRemoteThread(
+    process: HANDLE,
+    thread_func: u32,
+    thread_func_arg: u32,
+) -> Result<HANDLE, u32> {
+
+    let thread_handle = unsafe {
+        processthreadsapi::CreateRemoteThread(
+            process,
+            ptr::null_mut(),
+            0,
+            Some(mem::transmute(thread_func as usize)),
+            thread_func_arg as _,
+            0,
+            ptr::null_mut(),
+        )
+    };
+
+    if thread_handle == ptr::null_mut() {
+        return Err(unsafe { errhandlingapi::GetLastError() });
+    }
+
+    Ok(thread_handle)
+}
