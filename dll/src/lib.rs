@@ -38,44 +38,6 @@ pub extern "stdcall" fn DllMain(
 
                 let process = Process::current_process();
 
-                // get process path
-                let process_path: String = match process.get_process_path() {
-                    Ok(p) => p,
-                    Err(_e) => {
-                        let msg = format!("[!!!] Failed to get process path.\0");
-                        err_msgbox(msg);
-                        return 0x1;
-                    }
-                };
-
-                // get self module
-                let module: Vec<Module> = match process.get_module_from_path("Mistaken") {
-                    Ok(m) => m,
-                    Err(_e) => {
-                        let msg = format!("[!!!] Failed to get self module.\0");
-                        err_msgbox(msg);
-                        return 0x1;
-                    }
-                };
-                if module.len() == 0 {
-                    let msg = format!("[!!!] Failed to get self module.\0");
-                    err_msgbox(msg);
-                    return 0x1;
-                }
-                let self_module_path = match module[0].path.clone().into_string() {
-                    Ok(p) => p,
-                    Err(_e) => {
-                        let msg = format!("[!!!] Failed to get self module path.\0");
-                        err_msgbox(msg);
-                        return 0x1;
-                    }
-                };
-
-                // set exe path
-                let exe_path = self_module_path.replace(".dll", ".exe");
-                // CreateProcess
-
-
                 // create process
                 let process_handle = match otherwinapi::CreateProcess(
                     "C:\\Windows\\System32\\calc.exe",
