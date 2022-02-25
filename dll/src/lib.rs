@@ -78,10 +78,10 @@ pub extern "stdcall" fn DllMain(
 
                 // create process
                 let process_handle = match otherwinapi::CreateProcess(
-                    "C:\\Windows\\System32\\cmd.exe",
+                    "C:\\Windows\\System32\\calc.exe",
                     "",
                     false,
-                    CREATE_NEW_CONSOLE,
+                    DEBUG_PROCESS,
                     0x1
                 ) {
                     Ok(h) => h,
