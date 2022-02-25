@@ -8,16 +8,18 @@ mod overwrite;
 mod dbg;
 mod threadpool;
 mod ffi_helpers;
+mod otherwinapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, libloaderapi, processthreadsapi};
+use winapi::um::winbase::{DEBUG_PROCESS, CREATE_NEW_CONSOLE};
 use winapi::shared::minwindef::*;
 
 use processlib::{Process, Module};
 use overwrite::{OverWrite, AddrSize};
 
 use rand::Rng;
-use std::process::Command;
+use std::ptr;
 
 const DPATH: u32 = 0x4B5B4C;
 
@@ -27,6 +29,7 @@ pub extern "stdcall" fn DllMain(
     reason: DWORD,
     _: LPVOID
 ) -> i32 {
+    let mut child_process_handle: HANDLE = ptr::null_mut();
 
     match reason {
         DLL_PROCESS_ATTACH => {
@@ -70,16 +73,25 @@ pub extern "stdcall" fn DllMain(
 
                 // set exe path
                 let exe_path = self_module_path.replace(".dll", ".exe");
+                // CreateProcess
 
-                // exec
-                let cmd = Command::new(&exe_path)
-                    .spawn();
-                if cmd.is_err() {
-                    let msg = format!("[!!!] Failed to exec.\npath: {}\0", exe_path);
-                    err_msgbox(msg);
-                    return 0x1;
-                }
-                
+
+                // create process
+                let process_handle = match otherwinapi::CreateProcess(
+                    "C:\\Windows\\System32\\cmd.exe",
+                    "",
+                    false,
+                    CREATE_NEW_CONSOLE,
+                    0x1
+                ) {
+                    Ok(h) => h,
+                    Err(e) => {
+                        let msg = format!("[!] Failed to create process.\nError Code: {}\0", e);
+                        err_msgbox(msg);
+                        return 0x1;
+                    }
+                };
+                child_process_handle = process_handle;
 
                 processthreadsapi::CreateThread(
                     0 as *mut _,
@@ -104,6 +116,9 @@ pub extern "stdcall" fn DllMain(
             return true as i32;
         },
         DLL_PROCESS_DETACH => {
+            unsafe {
+                processthreadsapi::TerminateProcess(child_process_handle, 0);
+            }
             return true as i32;
         },
         _ => true as i32,
