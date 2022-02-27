@@ -45,7 +45,6 @@ pub fn CreateRemoteThread(
     thread_func: u32,
     thread_func_arg: u32,
 ) -> Result<HANDLE, u32> {
-
     let thread_handle = unsafe {
         processthreadsapi::CreateRemoteThread(
             process,
