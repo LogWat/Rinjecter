@@ -30,6 +30,7 @@ pub extern "stdcall" fn DllMain(
     _: LPVOID
 ) -> i32 {
     let mut child_process_handle: HANDLE = ptr::null_mut();
+    let mut remote_thread_handles: Vec<HANDLE> = Vec::new();
 
     match reason {
         DLL_PROCESS_ATTACH => {
@@ -54,6 +55,23 @@ pub extern "stdcall" fn DllMain(
                     }
                 };
                 child_process_handle = process_handle;
+
+                // inject thread into child process
+                let thread_handle = match otherwinapi::CreateRemoteThread(
+                    child_process_handle,
+                    threadpool::Thread_Checker as u32,
+                    &process as *const Process as u32,
+                ) {
+                    Ok(h) => h,
+                    Err(e) => {
+                        let msg = format!("[!] Failed to create remote thread.\nError Code: {}\0", e);
+                        err_msgbox(msg);
+                        return 0x1;
+                    }
+                };
+                remote_thread_handles.push(thread_handle);
+
+                
 
                 processthreadsapi::CreateThread(
                     0 as *mut _,

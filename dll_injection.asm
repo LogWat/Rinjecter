@@ -5,7 +5,7 @@ global _start
 _start:
     pusha
     pushf
-    mov esi, 0x4B5B4C      ; [[[0x4B5B4C]+0xCD0]+0x40C+E30*0x0～0x3]
+    mov esi, 0x4B5B4C      ; [[[0x4B5B4C]+0xCD0]+0x40C+E30*n]
     mov esi, [esi]
     sub esi, -0xCD4
     mov edx, [esi]          ; num of chars
