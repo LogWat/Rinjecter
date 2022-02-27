@@ -205,6 +205,23 @@ impl Process {
         };
         Ok(process_path)
     }
+
+    pub fn allocate_memory(&self, len: u32) -> Result<u32, u32> {
+        let addr = unsafe {
+            memoryapi::VirtualAllocEx(
+                self.handle,
+                0 as _,
+                len as _,
+                memoryapi::MEM_COMMIT | memoryapi::MEM_RESERVE,
+                memoryapi::PAGE_READWRITE,
+            )
+        };
+        if addr == 0 as _ {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        
+        Ok(addr as u32)
+    }
 }
 
 impl Module {
