@@ -2,6 +2,7 @@ use getset::Getters;
 use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt};
 use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt, errhandlingapi, psapi};
 use winapi::shared::minwindef::{HMODULE, DWORD, MAX_PATH};
+use winapi::um::winnt::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE};
 use ntapi::ntpsapi;
 
 use crate::overwrite::AddrSize;
@@ -212,15 +213,32 @@ impl Process {
                 self.handle,
                 0 as _,
                 len as _,
-                memoryapi::MEM_COMMIT | memoryapi::MEM_RESERVE,
-                memoryapi::PAGE_READWRITE,
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_READWRITE,
             )
         };
         if addr == 0 as _ {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
-        
+
         Ok(addr as u32)
+    }
+
+    pub fn write_memory(&self, addr: u32, data: &str) -> Result<(), u32> {
+        let data = data.as_bytes();
+        let ret = unsafe {
+            memoryapi::WriteProcessMemory(
+                self.handle,
+                addr as _,
+                data.as_ptr() as _,
+                data.len() as _,
+                0 as _,
+            )
+        };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(())
     }
 }
 
