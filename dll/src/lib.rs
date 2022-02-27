@@ -11,11 +11,11 @@ mod ffi_helpers;
 mod otherwinapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, libloaderapi, processthreadsapi};
-use winapi::um::winbase::{DEBUG_PROCESS, CREATE_NEW_CONSOLE};
+use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi};
+use winapi::um::winbase::{DEBUG_PROCESS};
 use winapi::shared::minwindef::*;
 
-use processlib::{Process, Module};
+use processlib::{Process};
 use overwrite::{OverWrite, AddrSize};
 
 use rand::Rng;
@@ -30,14 +30,13 @@ pub extern "stdcall" fn DllMain(
     _: LPVOID
 ) -> i32 {
     let mut child_process_handle: HANDLE = ptr::null_mut();
-    let mut remote_thread_handles: Vec<HANDLE> = Vec::new();
 
     match reason {
         DLL_PROCESS_ATTACH => {
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
 
-                let process = Process::current_process();
+                let mut process = Process::current_process();
 
                 // create process
                 let process_handle = match otherwinapi::CreateProcess(
@@ -56,23 +55,35 @@ pub extern "stdcall" fn DllMain(
                 };
                 child_process_handle = process_handle;
 
-                // inject thread into child process
-                let thread_handle = match otherwinapi::CreateRemoteThread(
-                    child_process_handle,
-                    threadpool::Thread_Checker as u32,
-                    &process as *const Process as u32,
-                ) {
-                    Ok(h) => h,
+                // get self module
+                let self_modules = match Process::get_module_from_path(&process, "Mistaken") {
+                    Ok(m) => m,
                     Err(e) => {
-                        let msg = format!("[!] Failed to create remote thread.\nError Code: {}\0", e);
+                        let msg = format!("[!] Failed to get self module.\nError Code: {}\0", e);
                         err_msgbox(msg);
                         return 0x1;
                     }
                 };
-                remote_thread_handles.push(thread_handle);
+                // set dll2 path from self module path (2.dll)
+                let dll2_path = match self_modules.get(0).unwrap().path.clone().into_string() {
+                    Ok(p) => p,
+                    Err(_e) => {
+                        return 0x1;
+                    }
+                };
+                let _ = dll2_path.replace(".dll", "2.dll");
 
+                // inject dll into calc.exe
+                let _h_remotethread = match dll_inject(&mut process, &dll2_path) {
+                    Ok(h) => h,
+                    Err(e) => {
+                        let msg = format!("[!] Failed to inject dll.\nError Code: {}\0", e);
+                        err_msgbox(msg);
+                        return 0x1;
+                    }
+                };
                 
-
+                /*
                 processthreadsapi::CreateThread(
                     0 as *mut _,
                     0,
@@ -81,6 +92,8 @@ pub extern "stdcall" fn DllMain(
                     0,
                     0 as *mut _
                 );
+                */
+
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
                     Err(e) => {
@@ -103,6 +116,61 @@ pub extern "stdcall" fn DllMain(
         },
         _ => true as i32,
     }
+}
+
+
+fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, u32> {
+    process.handle = unsafe {
+        processthreadsapi::OpenProcess(
+            PROCESS_ALL_ACCESS,
+            0,
+            process.pid
+        )
+    };
+    if process.handle == ptr::null_mut() {
+        return Err(unsafe { errhandlingapi::GetLastError() });
+    }
+
+    let arg_address = match Process::allocate_memory(process, dll_path.len() as u32) {
+        Ok(a) => a,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+
+    match Process::write_memory(process, arg_address, dll_path) {
+        Ok(_) => {},
+        Err(e) => {
+            return Err(e);
+        }
+    };
+
+    let h_kernel32 = unsafe {
+        libloaderapi::GetModuleHandleA("kernel32.dll".as_ptr() as *const i8)
+    };
+    if h_kernel32 == ptr::null_mut() {
+        return Err(unsafe { errhandlingapi::GetLastError() });
+    }
+
+    let h_loadlib = unsafe {
+        libloaderapi::GetProcAddress(h_kernel32, "LoadLibraryA\0".as_ptr() as *const i8)
+    };
+    if h_loadlib == ptr::null_mut() {
+        return Err(unsafe { errhandlingapi::GetLastError() });
+    }
+
+    let h_thread = match otherwinapi::CreateRemoteThread(
+        process.handle,
+        h_loadlib as u32,
+        arg_address,
+    ) {
+        Ok(h) => h,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+
+    return Ok(h_thread);
 }
 
 // 生ポインタの利用 *mut or *const
