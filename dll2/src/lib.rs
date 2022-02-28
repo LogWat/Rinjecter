@@ -6,6 +6,7 @@ use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{libloaderapi};
 
 mod process;
+mod ffi_helpers;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
