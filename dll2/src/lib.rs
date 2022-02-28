@@ -3,6 +3,9 @@ extern crate winapi;
 
 use winapi::shared::minwindef::*;
 use winapi::um::winuser::{MB_OK, MessageBoxW};
+use winapi::um::{libloaderapi};
+
+mod process;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
@@ -12,6 +15,10 @@ pub extern "stdcall" fn DllMain(
 ) -> i32 {
     match reason {
         _DLL_PROCESS_ATTACH => {
+            unsafe {
+                libloaderapi::DisableThreadLibraryCalls(_hinst_dll);
+            }
+
             let msg = "[!] DLL_PROCESS_ATTACH\0";
             let title = "INFO\0";
             unsafe { MsgBox(msg, title); }
@@ -20,7 +27,7 @@ pub extern "stdcall" fn DllMain(
             return true as i32;
         },
         _DLL_PROCESS_DETACH => {
-            return true as i32;
+            true as i32
         },
         _ => true as i32,
     }
