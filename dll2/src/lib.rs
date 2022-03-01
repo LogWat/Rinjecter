@@ -3,6 +3,7 @@ extern crate winapi;
 
 use winapi::shared::minwindef::*;
 use winapi::um::{libloaderapi};
+use winapi::um::winnt::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH};
 
 
 mod process;
@@ -15,34 +16,35 @@ use process::Process;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
-    _hinst_dll: HINSTANCE, 
+    hinst_dll: HINSTANCE, 
     reason: DWORD,
     _: LPVOID
 ) -> i32 {
+
     match reason {
-        _DLL_PROCESS_ATTACH => {
+        DLL_PROCESS_ATTACH => {
             unsafe {
-                libloaderapi::DisableThreadLibraryCalls(_hinst_dll);
+                libloaderapi::DisableThreadLibraryCalls(hinst_dll);
             }
 
-            let msg = "[!] DLL_PROCESS_ATTACH\0";
-            let title = "INFO\0";
-            unsafe { otherwinapi::MsgBox(msg, title); }
-
-            let mut target_process = match find_target_process("mugen.exe\0") {
+            let target_process = match find_target_process("mugen.exe") {
                 Ok(process) => process,
                 Err(err) => {
                     let msg = format!("Failed to find target process: {}\0", err);
                     let title = "ERROR\0";
-                    unsafe { otherwinapi::MsgBox(&msg, title); }
+                    otherwinapi::MsgBox(&msg, title);
                     return 0;
                 }
             };
 
+            let msg = format!("Target process found. pid: {}\0", target_process.pid);
+            let title = "INFO\0";
+            otherwinapi::MsgBox(&msg, title);
+
 
             return true as i32;
         },
-        _DLL_PROCESS_DETACH => {
+        DLL_PROCESS_DETACH => {
             true as i32
         },
         _ => true as i32,
@@ -53,6 +55,6 @@ fn find_target_process(name: &str) -> Result<Process, u32> {
     let mut process = Process::empty();
     match process.get_process_from_name(name) {
         Ok(process) => Ok(process),
-        Err(err) => Err(err),
+        Err(e) => Err(e),
     }
 }

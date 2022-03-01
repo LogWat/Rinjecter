@@ -17,6 +17,8 @@ use winapi::{
 };
 use winapi::um::{processthreadsapi, errhandlingapi};
 
+use crate::otherwinapi;
+
 use std::{mem, ptr, str, ffi::OsString, os::windows::ffi::OsStringExt};
 
 
@@ -55,6 +57,10 @@ impl Process {
             Ok(processes) => processes,
             Err(err) => return Err(err),
         };
+
+        if processes.len() == 0 {
+            return Err(0);
+        }
 
         for process in processes {
             if process.name().contains(name) {
@@ -103,7 +109,7 @@ impl Process {
             };
             match process.open_process() {
                 Ok(_) => processes.push(process),
-                Err(_) => continue,
+                Err(_) => {}
             }
             success = unsafe { tlhelp32::Process32NextW(snapshot, &mut process_entry) };
         }

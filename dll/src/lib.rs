@@ -79,9 +79,6 @@ pub extern "stdcall" fn DllMain(
                     let msg = format!("[!] Failed to get self module.\0");
                     err_msgbox(msg);
                     return 0x1;
-                } else {
-                    let msg = format!("[!] DLL2 Path: {}\0", dll2_path);
-                    err_msgbox(msg);
                 }
                 
 
