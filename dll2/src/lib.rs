@@ -2,11 +2,16 @@
 extern crate winapi;
 
 use winapi::shared::minwindef::*;
-use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{libloaderapi};
+
 
 mod process;
 mod ffi_helpers;
+mod dbg;
+mod threads;
+mod otherwinapi;
+
+use process::Process;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
@@ -22,7 +27,17 @@ pub extern "stdcall" fn DllMain(
 
             let msg = "[!] DLL_PROCESS_ATTACH\0";
             let title = "INFO\0";
-            unsafe { MsgBox(msg, title); }
+            unsafe { otherwinapi::MsgBox(msg, title); }
+
+            let mut target_process = match find_target_process("mugen.exe\0") {
+                Ok(process) => process,
+                Err(err) => {
+                    let msg = format!("Failed to find target process: {}\0", err);
+                    let title = "ERROR\0";
+                    unsafe { otherwinapi::MsgBox(&msg, title); }
+                    return 0;
+                }
+            };
 
 
             return true as i32;
@@ -34,14 +49,10 @@ pub extern "stdcall" fn DllMain(
     }
 }
 
-unsafe fn MsgBox(text: &str, title: &str) {
-    let lp_text: Vec<u16> = text.encode_utf16().collect();
-    let lp_caption: Vec<u16> = title.encode_utf16().collect();
-
-    MessageBoxW(
-        std::ptr::null_mut(),
-        lp_text.as_ptr(),
-        lp_caption.as_ptr(),
-        MB_OK
-    );
+fn find_target_process(name: &str) -> Result<Process, u32> {
+    let mut process = Process::empty();
+    match process.get_process_from_name(name) {
+        Ok(process) => Ok(process),
+        Err(err) => Err(err),
+    }
 }
