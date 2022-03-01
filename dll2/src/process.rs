@@ -19,8 +19,6 @@ use winapi::um::{processthreadsapi, errhandlingapi};
 
 use std::{mem, ptr, str, ffi::OsString, os::windows::ffi::OsStringExt};
 
-use crate::ffi_helpers;
-
 
 #[repr(C)]
 pub struct Process {
@@ -59,7 +57,7 @@ impl Process {
         };
 
         for process in processes {
-            if process.name() == name {
+            if process.name().contains(name) {
                 self.pid = process.pid;
                 self.handle = process.handle;
                 return Ok(process);
