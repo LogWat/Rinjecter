@@ -3,19 +3,23 @@ use winapi::{
         winnt::{
             HANDLE, 
             PROCESS_ALL_ACCESS,
+            THREAD_ALL_ACCESS,
         },
         tlhelp32, handleapi, psapi,
         tlhelp32::{
             PROCESSENTRY32W,
+            THREADENTRY32,
             TH32CS_SNAPPROCESS,
+            TH32CS_SNAPTHREAD,
         },
+        processthreadsapi, errhandlingapi,
+        handleapi::{INVALID_HANDLE_VALUE},
     },
     shared::minwindef::{
         DWORD,
         MAX_PATH,
     },
 };
-use winapi::um::{processthreadsapi, errhandlingapi};
 
 use crate::otherwinapi;
 
@@ -26,6 +30,16 @@ use std::{mem, ptr, str, ffi::OsString, os::windows::ffi::OsStringExt};
 pub struct Process {
     pub pid: u32,
     pub handle: HANDLE,
+}
+
+unsafe impl Send for Process {}
+unsafe impl Sync for Process {}
+
+
+#[repr(C)]
+pub struct Thread {
+    pub handle: HANDLE,
+    pub tid: u32,
 }
 
 impl Process {
@@ -117,5 +131,51 @@ impl Process {
         unsafe { handleapi::CloseHandle(snapshot) };
     
         Ok(processes)
+    }
+
+    pub fn get_threadlist(&self) -> Result<Vec<Thread>, u32> {
+        let mut threads: Vec<Thread> = Vec::new();
+        let mut thread_entry: THREADENTRY32 = unsafe { mem::zeroed() };
+        thread_entry.dwSize = mem::size_of::<THREADENTRY32>() as _;
+
+        let thread_list = unsafe {
+            tlhelp32::CreateToolhelp32Snapshot(
+                TH32CS_SNAPTHREAD,
+                self.pid
+            )
+        };
+        if thread_list == INVALID_HANDLE_VALUE {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        while unsafe { tlhelp32::Thread32Next(thread_list, &mut thread_entry) } != 0 {
+            if thread_entry.th32OwnerProcessID == self.pid {
+                let handle = unsafe { processthreadsapi::OpenThread(
+                    THREAD_ALL_ACCESS,
+                    0,
+                    thread_entry.th32ThreadID
+                )};
+                if handle == ptr::null_mut() {
+                    continue;
+                }
+                threads.push(Thread {
+                    handle,
+                    tid: thread_entry.th32ThreadID,
+                });
+            }
+        }
+        unsafe { handleapi::CloseHandle(thread_list) };
+
+        Ok(threads)
+    }
+}
+
+impl Thread {
+    pub fn get_current_thread_id() -> Result<u32, u32> {
+        let tid = unsafe { processthreadsapi::GetCurrentThreadId() };
+        if tid == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(tid)
     }
 }
