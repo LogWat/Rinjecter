@@ -4,7 +4,8 @@ extern crate winapi;
 use winapi::shared::minwindef::*;
 use winapi::um::{libloaderapi};
 use winapi::um::winnt::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH};
-
+use std::thread;
+use std::sync::{Arc, Mutex};
 
 mod process;
 mod ffi_helpers;
@@ -37,10 +38,22 @@ pub extern "stdcall" fn DllMain(
                 }
             };
 
-            let msg = format!("Target process found. pid: {}\0", target_process.pid);
-            let title = "INFO\0";
-            otherwinapi::MsgBox(&msg, title);
+            let process = Arc::new(Mutex::new(target_process));
+            let mut handles = vec![];
 
+            let th0 = thread::spawn(move || {
+                match threads::wait_debugevnet(process.clone()) {
+                    Ok(_) => {},
+                    Err(err) => {
+                        let msg = format!("Failed to wait debugevnet: {}\0", err);
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, title);
+                    }
+                }
+            });
+
+            handles.push(&th0);
+            th0.join().unwrap();
 
             return true as i32;
         },
