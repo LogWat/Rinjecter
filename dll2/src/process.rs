@@ -22,7 +22,7 @@ use winapi::{
         MAX_PATH,
     },
 };
-
+use ntapi::ntpsapi;
 use crate::otherwinapi;
 
 use std::{mem, ptr, str, ffi::OsString, os::windows::ffi::OsStringExt};
@@ -194,6 +194,23 @@ impl Thread {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
         Ok(())
+    }
+
+    pub fn base_addr(&self) -> Result<u32, u32> {
+        let mut dw_start_addr: u32 = 0;
+        if unsafe {
+            ntpsapi::NtQueryInformationThread(
+                self.handle,
+                ntpsapi::ThreadQuerySetWin32StartAddress,
+                &mut dw_start_addr as *mut _ as _,
+                mem::size_of::<u32>() as _,
+                ptr::null_mut(),
+            )
+        } != 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        Ok(dw_start_addr)
     }
 }
 
