@@ -2,6 +2,13 @@ use crate::process::{Process, Thread, Module};
 use crate::ffi_helpers;
 use crate::dbg::Debugger;
 
+use winapi::um::{
+    minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT, EXIT_THREAD_DEBUG_EVENT, UNLOAD_DLL_DEBUG_EVENT},
+    winnt::{DBG_CONTINUE},
+    debugapi, winbase::INFINITE, errhandlingapi,
+};
+
+use std::{mem};
 use std::sync::{Arc, Mutex};
 
 pub fn wait_debugevnet(process: Arc<Mutex<Process>>) -> Result<(), u32> {
@@ -35,6 +42,54 @@ pub fn wait_debugevnet(process: Arc<Mutex<Process>>) -> Result<(), u32> {
         Ok(_) => {},
         Err(_e) => return Err(0x1),
     };
+
+    let mut debug_event: DEBUG_EVENT = unsafe { mem::zeroed() };
+    let cnt_flag: u32 = DBG_CONTINUE;
+    loop {
+        if unsafe { debugapi::WaitForDebugEvent(&mut debug_event, INFINITE) } != 0 {
+            match debug_event.dwDebugEventCode {
+                CREATE_THREAD_DEBUG_EVENT => {
+                    match Thread::open_thread(debug_event.dwThreadId) {
+                        Ok(thread) => {
+                            thread_list.push(thread);
+                        },
+                        Err(_e) => return Err(0x1),
+                    }
+                },
+                LOAD_DLL_DEBUG_EVENT => {
+                    module_list = match Module::get_module_from_path(&process, "") {
+                        Ok(list) => list,
+                        Err(_e) => return Err(0x1),
+                    };
+                    specific_module_list = match Module::get_module_from_path(&process, "chars") {
+                        Ok(list) => list,
+                        Err(_e) => return Err(0x1),
+                    };
+                },
+                _ => {
+                    unsafe { debugapi::ContinueDebugEvent(
+                        debug_event.dwProcessId,
+                        debug_event.dwThreadId,
+                        cnt_flag
+                    ) };
+                }
+            }
+
+            match suspend_thread(&process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+                Ok(_) => {},
+                Err(_e) => return Err(0x1),
+            };
+
+            unsafe { debugapi::ContinueDebugEvent(
+                debug_event.dwProcessId,
+                debug_event.dwThreadId,
+                cnt_flag
+            ) };
+            
+        } else {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+    }
 
     Ok(())
 }

@@ -180,6 +180,21 @@ impl Process {
 }
 
 impl Thread {
+    pub fn open_thread(tid: u32) -> Result<Self, u32> {
+        let handle = unsafe { processthreadsapi::OpenThread(
+            THREAD_ALL_ACCESS,
+            0,
+            tid
+        ) };
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(Thread {
+            handle,
+            tid,
+        })
+    }
+
     pub fn get_current_thread_id() -> Result<u32, u32> {
         let tid = unsafe { processthreadsapi::GetCurrentThreadId() };
         if tid == 0 {
