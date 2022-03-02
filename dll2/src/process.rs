@@ -9,14 +9,16 @@ use winapi::{
         tlhelp32::{
             PROCESSENTRY32W,
             THREADENTRY32,
+            MODULEENTRY32W,
             TH32CS_SNAPPROCESS,
             TH32CS_SNAPTHREAD,
+            TH32CS_SNAPMODULE
         },
         processthreadsapi, errhandlingapi,
         handleapi::{INVALID_HANDLE_VALUE},
     },
     shared::minwindef::{
-        DWORD,
+        HMODULE,
         MAX_PATH,
     },
 };
@@ -36,10 +38,17 @@ unsafe impl Send for Process {}
 unsafe impl Sync for Process {}
 
 
-#[repr(C)]
 pub struct Thread {
     pub handle: HANDLE,
     pub tid: u32,
+}
+
+pub struct Module {
+    pub handle: HMODULE,
+    pub name: String,
+    pub path: String,
+    pub base_addr: u32,
+    pub size: u32,
 }
 
 impl Process {
@@ -177,5 +186,51 @@ impl Thread {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
         Ok(tid)
+    }
+
+    pub fn suspend(&self) -> Result<(), u32> {
+        let success = unsafe { processthreadsapi::SuspendThread(self.handle) };
+        if success == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(())
+    }
+}
+
+impl Module {
+    pub fn get_module_from_path(process: &Process, path_name: &str) -> Result<Vec<Module>, u32> {
+        let module = unsafe {
+            tlhelp32::CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process.pid)
+        };
+        if module == INVALID_HANDLE_VALUE {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        let mut module_entry: MODULEENTRY32W = unsafe { mem::zeroed() };
+        module_entry.dwSize = mem::size_of::<MODULEENTRY32W>() as _;
+        let mut module_list: Vec<Module> = Vec::new();
+
+        while unsafe { tlhelp32::Module32NextW(module, &mut module_entry) } != 0 {
+            let name = match OsString::from_wide(&module_entry.szModule[..]).into_string() {
+                Ok(name) => name,
+                Err(_) => continue,
+            };
+            let path = match OsString::from_wide(&module_entry.szExePath[..]).into_string() {
+                Ok(path) => path,
+                Err(_) => continue,
+            };
+            if path.contains(path_name) || (path == "" && process.pid == module_entry.th32ProcessID) {
+                module_list.push(Module {
+                    handle: module_entry.hModule,
+                    name,
+                    path,
+                    base_addr: module_entry.modBaseAddr as u32,
+                    size: module_entry.modBaseSize as u32,
+                });
+            }
+        }
+
+        unsafe { handleapi::CloseHandle(module) };
+        Ok(module_list)
     }
 }
