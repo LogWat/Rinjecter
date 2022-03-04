@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 winapi = { version = "0.3.9", features = ["std", "everything"] }
 ntapi = "0.3.6"
+tokio = { version = "1.4.0", features = ["full"]}
 
 [lib]
 path = "src/lib.rs"
