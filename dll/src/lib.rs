@@ -12,7 +12,7 @@ mod otherwinapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi};
-use winapi::um::winbase::{DEBUG_PROCESS};
+use winapi::um::winbase::{CREATE_SUSPENDED};
 use winapi::shared::minwindef::*;
 
 use processlib::{Process};
@@ -30,6 +30,7 @@ pub extern "stdcall" fn DllMain(
     _: LPVOID
 ) -> i32 {
     let mut child_process_handle: HANDLE = ptr::null_mut();
+    let mut remote_thread_handle: HANDLE = ptr::null_mut();
 
     match reason {
         DLL_PROCESS_ATTACH => {
@@ -43,7 +44,7 @@ pub extern "stdcall" fn DllMain(
                     "C:\\Windows\\System32\\calc.exe",
                     "",
                     false,
-                    DEBUG_PROCESS,
+                    CREATE_SUSPENDED,
                     0x1
                 ) {
                     Ok(h) => h,
@@ -83,7 +84,7 @@ pub extern "stdcall" fn DllMain(
                 
 
                 // inject dll into calc.exe
-                let _h_remotethread = match dll_inject(&mut process, &dll2_path) {
+                remote_thread_handle = match dll_inject(&mut process, &dll2_path) {
                     Ok(h) => h,
                     Err(e) => {
                         let msg = format!("[!] Failed to inject dll.\nError: {}\0", e);
@@ -119,7 +120,12 @@ pub extern "stdcall" fn DllMain(
         },
         DLL_PROCESS_DETACH => {
             unsafe {
-                processthreadsapi::TerminateProcess(child_process_handle, 0);
+                if remote_thread_handle != ptr::null_mut() {
+                    processthreadsapi::ResumeThread(remote_thread_handle);
+                }
+                if child_process_handle != ptr::null_mut() {
+                    processthreadsapi::TerminateProcess(child_process_handle, 0);
+                }
             }
             return true as i32;
         },
