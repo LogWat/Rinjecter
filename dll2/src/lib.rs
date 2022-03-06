@@ -2,18 +2,14 @@
 extern crate winapi;
 
 use winapi::shared::minwindef::*;
-use winapi::um::{libloaderapi};
+use winapi::um::{libloaderapi, processthreadsapi, debugapi};
 use winapi::um::winnt::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH};
-use std::thread;
-use std::sync::{Arc, Mutex};
 
 mod process;
 mod ffi_helpers;
 mod dbg;
 mod threads;
 mod otherwinapi;
-
-use process::Process;
 
 #[no_mangle]
 pub extern "stdcall" fn DllMain(
@@ -28,20 +24,11 @@ pub extern "stdcall" fn DllMain(
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
             }
 
-            let target_process = match find_target_process("mugen.exe") {
-                Ok(process) => process,
-                Err(err) => {
-                    let msg = format!("Failed to find target process: {}\0", err);
-                    let title = "ERROR\0";
-                    otherwinapi::MsgBox(&msg, title);
-                    return 0;
-                }
-            };
-
+            /*
             let process = Arc::new(Mutex::new(target_process));
             let mut handles = vec![];
-
             let th0 = thread::spawn(move || {
+                
                 match threads::wait_debugevnet(process.clone()) {
                     Ok(_) => {},
                     Err(err) => {
@@ -50,10 +37,40 @@ pub extern "stdcall" fn DllMain(
                         otherwinapi::MsgBox(&msg, title);
                     }
                 }
+                let msg = "test\0";
+                let title = "test\0";
+                otherwinapi::MsgBox(&msg, &title);
             });
+            
+            let th0 = tokio::spawn(async move {
+                match threads::wait_debugevnet(process.clone()).await {
+                    Ok(_) => {},
+                    Err(err) => {
+                        let msg = format!("Failed to wait debugevnet: {}\0", err);
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, title);
+                    }
+                }
+            });
+            handles.push(th0);
+            */
 
-            handles.push(&th0);
-            th0.join().unwrap();
+            if unsafe { debugapi::IsDebuggerPresent() } != 0 {
+                let msg = "OMFG! You are debugging this Process!\0";
+                let title = "ERROR\0";
+                otherwinapi::MsgBox(&msg, title);
+            }
+
+            unsafe {
+                processthreadsapi::CreateThread(
+                    0 as *mut _,
+                    0,
+                    Some(threads::wait_debugevnet),
+                    0 as *mut _,
+                    0,
+                    0 as *mut _
+                );
+            }
 
             return true as i32;
         },
@@ -61,13 +78,5 @@ pub extern "stdcall" fn DllMain(
             true as i32
         },
         _ => true as i32,
-    }
-}
-
-fn find_target_process(name: &str) -> Result<Process, u32> {
-    let mut process = Process::empty();
-    match process.get_process_from_name(name) {
-        Ok(process) => Ok(process),
-        Err(e) => Err(e),
     }
 }

@@ -23,7 +23,6 @@ use winapi::{
     },
 };
 use ntapi::ntpsapi;
-use crate::otherwinapi;
 
 use std::{mem, ptr, str, ffi::OsString, os::windows::ffi::OsStringExt};
 
@@ -195,6 +194,7 @@ impl Thread {
         })
     }
 
+    #[allow(dead_code)]
     pub fn get_current_thread_id() -> Result<u32, u32> {
         let tid = unsafe { processthreadsapi::GetCurrentThreadId() };
         if tid == 0 {
