@@ -11,7 +11,7 @@ mod ffi_helpers;
 mod otherwinapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi};
+use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi, debugapi};
 use winapi::um::winbase::{CREATE_SUSPENDED};
 use winapi::shared::minwindef::*;
 
@@ -36,6 +36,11 @@ pub extern "stdcall" fn DllMain(
         DLL_PROCESS_ATTACH => {
             unsafe {
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
+
+                if debugapi::IsDebuggerPresent() != 0 {
+                    let msg = "OMFG! You are debugging this Process!\0";
+                    err_msgbox(msg.to_string());
+                }
 
                 let mut process = Process::current_process();
 
