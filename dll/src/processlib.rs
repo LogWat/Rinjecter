@@ -43,6 +43,16 @@ impl Process {
         process
     }
 
+    pub fn from_handle(handle: winnt::HANDLE) -> Self {
+        let mut process = Self {
+            pid: 0,
+            handle,
+        };
+        process.pid = unsafe { processthreadsapi::GetProcessId(process.handle) };
+
+        process
+    }
+
     // Exにする必要は無いけど一応他のプロセスに対しても使えるようにしておく
     pub fn check_protection(&self, address: u32) -> Result<winnt::MEMORY_BASIC_INFORMATION, &'static str> {
         let mut meminfo: winnt::MEMORY_BASIC_INFORMATION = unsafe { mem::zeroed() };

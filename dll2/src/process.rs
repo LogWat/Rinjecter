@@ -4,6 +4,9 @@ use winapi::{
             HANDLE, 
             PROCESS_ALL_ACCESS,
             THREAD_ALL_ACCESS,
+            MEM_COMMIT,
+            MEM_RESERVE,
+            PAGE_READWRITE,
         },
         tlhelp32, handleapi, psapi,
         tlhelp32::{
@@ -14,7 +17,7 @@ use winapi::{
             TH32CS_SNAPTHREAD,
             TH32CS_SNAPMODULE
         },
-        processthreadsapi, errhandlingapi,
+        processthreadsapi, errhandlingapi, memoryapi,
         handleapi::{INVALID_HANDLE_VALUE},
     },
     shared::minwindef::{
@@ -58,6 +61,13 @@ impl Process {
         }
     }
 
+    pub fn get_current_process() -> Self {
+        let mut process = Self::empty();
+        process.handle = unsafe { processthreadsapi::GetCurrentProcess() };
+        process.pid = unsafe { processthreadsapi::GetProcessId(process.handle) };
+        process
+    }
+
     pub fn open_process(&mut self) -> Result<(), u32> {
         let handle = unsafe { 
             processthreadsapi::OpenProcess(
@@ -96,7 +106,7 @@ impl Process {
     }
 
 
-    fn name(&self) -> String {
+    pub fn name(&self) -> String {
         let mut name = [0u16; MAX_PATH];
         unsafe {
             psapi::GetProcessImageFileNameW(
@@ -110,7 +120,7 @@ impl Process {
     }
 
 
-    fn enumerate_process() -> Result<Vec<Process>, u32> {
+    pub fn enumerate_process() -> Result<Vec<Process>, u32> {
         let mut processes: Vec<Process> = Vec::new();
         let mut process_entry: PROCESSENTRY32W = unsafe { mem::zeroed() };
         process_entry.dwSize = mem::size_of::<PROCESSENTRY32W>() as u32;
@@ -175,6 +185,48 @@ impl Process {
         unsafe { handleapi::CloseHandle(thread_list) };
 
         Ok(threads)
+    }
+
+    pub fn allocate_memory(&self, len: u32) -> Result<u32, u32> {
+        let addr = unsafe {
+            memoryapi::VirtualAllocEx(
+                self.handle,
+                0 as _,
+                len as _,
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_READWRITE,
+            )
+        };
+        if addr == 0 as _ {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        Ok(addr as u32)
+    }
+
+    pub fn write_memory(&self, addr: u32, data: &str) -> Result<(), u32> {
+        let data = data.as_bytes();
+        let ret = unsafe {
+            memoryapi::WriteProcessMemory(
+                self.handle,
+                addr as _,
+                data.as_ptr() as _,
+                data.len() as _,
+                0 as _,
+            )
+        };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(())
+    }
+
+    pub fn kill_process(&self) -> Result<(), u32> {
+        let ret = unsafe { processthreadsapi::TerminateProcess(self.handle, 0) };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(())
     }
 }
 

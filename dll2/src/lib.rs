@@ -65,7 +65,7 @@ pub extern "stdcall" fn DllMain(
                 processthreadsapi::CreateThread(
                     0 as *mut _,
                     0,
-                    Some(threads::wait_debugevnet),
+                    Some(threads::thread_entry),
                     0 as *mut _,
                     0,
                     0 as *mut _

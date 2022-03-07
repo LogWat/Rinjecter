@@ -11,8 +11,8 @@ mod ffi_helpers;
 mod otherwinapi;
 
 use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi, debugapi};
-use winapi::um::winbase::{CREATE_SUSPENDED};
+use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi, debugapi, handleapi};
+use winapi::um::winbase::{CREATE_NEW_PROCESS_GROUP, CREATE_SUSPENDED};
 use winapi::shared::minwindef::*;
 
 use processlib::{Process};
@@ -49,7 +49,7 @@ pub extern "stdcall" fn DllMain(
                     "C:\\Windows\\System32\\calc.exe",
                     "",
                     false,
-                    CREATE_SUSPENDED,
+                    CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED,
                     0x1
                 ) {
                     Ok(h) => h,
@@ -60,6 +60,7 @@ pub extern "stdcall" fn DllMain(
                     }
                 };
                 child_process_handle = process_handle;
+                let mut target_process: Process = Process::from_handle(process_handle);
 
                 // get self module
                 let self_modules = match Process::get_module_from_path(&process, "Mistaken") {
@@ -86,10 +87,9 @@ pub extern "stdcall" fn DllMain(
                     err_msgbox(msg);
                     return 0x1;
                 }
-                
 
                 // inject dll into calc.exe
-                remote_thread_handle = match dll_inject(&mut process, &dll2_path) {
+                remote_thread_handle = match dll_inject(&mut target_process, &dll2_path) {
                     Ok(h) => h,
                     Err(e) => {
                         let msg = format!("[!] Failed to inject dll.\nError: {}\0", e);
@@ -129,6 +129,7 @@ pub extern "stdcall" fn DllMain(
                     processthreadsapi::ResumeThread(remote_thread_handle);
                 }
                 if child_process_handle != ptr::null_mut() {
+                    processthreadsapi::ResumeThread(child_process_handle);
                     processthreadsapi::TerminateProcess(child_process_handle, 0);
                 }
             }
