@@ -15,8 +15,4 @@
 - 対象のプログラム(a.exeとする)に対してshellcodeを利用し，dllを注入する(dll1とする)
     - dll1からだとa.exeに対してDebugActiveProcessを呼び出すとAccess denied(GetLastError 5)を吐く
 - dll1からcalc.exeを子プロセスとして生成し，dllを注入する(dll2とする)
-    - dll2から**a.exe**にDebugActiveProcessを呼び出すとdll1と同様にアクセス拒否される
-    - a.exeとcalc.exe間に親子関係があるため？と推測できる
-        - 確認のため，独立したプロセスをWindows上で見つけ，そのプロセスに対してdll2を注入する
-        - 独立したプロセスに注入したdll2からa.exeにデバッグアタッチすると成功する
-        - a.exeと独立したcalc.exeを生成する方法を考えなければならない
+    - dll2から**a.exe**にDebugActiveProcessを呼び出すとプロセスアタッチに成功する
