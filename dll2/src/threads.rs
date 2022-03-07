@@ -3,7 +3,7 @@ use crate::otherwinapi;
 use crate::dbg::Debugger;
 
 use winapi::um::{
-    minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT},
+    minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT},
     winnt::{DBG_CONTINUE},
     debugapi, processthreadsapi, libloaderapi, errhandlingapi,
     winbase::{INFINITE, DEBUG_PROCESS},
@@ -16,7 +16,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
     let mut process = match find_target_process("mugen.exe") {
         Ok(p) => p,
         Err(e) => {
-            println!("[!] Failed to find target process: {}", e);
+            eprintln!("[!] Failed to find target process: {}", e);
             return 0x1;
         }
     };
@@ -32,9 +32,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
     match debugger.set_privilege() {
         Ok(_) => {},
         Err(e) => {
-            let msg = format!("Failed to set privilege.\nError Code: {}\0", e);
-            let title = "ERROR\0";
-            otherwinapi::MsgBox(&msg, title);
+            eprintln!("[!] Failed to set privilege: {}", e);
             return 0x1;
         }
     }
@@ -43,17 +41,13 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
     let calc_list = match num_of_processes("calc.exe") {
         Ok(n) => {
             if n.len() == 0 {
-                let msg = "Failed to find calc.exe.\0";
-                let title = "ERROR\0";
-                otherwinapi::MsgBox(&msg, title);
+                eprintln!("[!] Failed to find calc.exe");
                 return 0x1;
             }
             n
         },
         Err(e) => {
-            let msg = format!("[!] Failed to get number of processes.\nError Code: {}\0", e);
-            let title = "ERROR\0";
-            otherwinapi::MsgBox(&msg, title);
+            eprintln!("[!] Failed to find calc.exe: {}", e);
             return 0x1;
         }
     };
@@ -67,9 +61,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
                         match i.kill_process() {
                             Ok(_) => {},
                             Err(e) => {
-                                let msg = format!("[!] Failed to kill process.\nError Code: {}\0", e);
-                                let title = "ERROR\0";
-                                otherwinapi::MsgBox(&msg, title);
+                                eprintln!("[!] Failed to kill process: {}", e);
                                 return 0x1;
                             }
                         }
@@ -81,9 +73,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
             // if more than three, then we can't do anything
             // if there's one or two, create a new process
             if calc_list.len() > 2 {
-                let msg = "Found more than 2 calc.exe processes.\0";
-                let title = "ERROR\0";
-                otherwinapi::MsgBox(&msg, title);
+                eprintln!("[!] Found more than 2 calc.exe");
                 return 0x1;
             } else {
                 match otherwinapi::CreateProcess(
@@ -95,9 +85,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
                 ) {
                     Ok(_) => {},
                     Err(e) => {
-                        let msg = format!("[!] Failed to create process.\nError Code: {}\0", e);
-                        let title = "ERROR\0";
-                        otherwinapi::MsgBox(&msg, title);
+                        eprintln!("[!] Failed to create process: {}", e);
                         return 0x1;
                     }
                 }
@@ -108,17 +96,13 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
                 let self_modules = match Module::get_module_from_path(&process, "Mistaken") {
                     Ok(m) => {
                         if m.len() == 0 {
-                            let msg = "Failed to find 2.dll.\0";
-                            let title = "ERROR\0";
-                            otherwinapi::MsgBox(&msg, title);
+                            eprintln!("[!] Failed to find 2.dll");
                             return 0x1;
                         }
                         m
                     },
                     Err(e) => {
-                        let msg = format!("[!] Failed to get self module.\nError Code: {}\0", e);
-                        let title = "ERROR\0";
-                        otherwinapi::MsgBox(&msg, title);
+                        eprintln!("[!] Failed to get self module. Error Code: {}", e);
                         return 0x1;
                     }
                 };
@@ -130,9 +114,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
                     }
                 }
                 if dll2_path.is_empty() {
-                    let msg = "Failed to find 2.dll.\0";
-                    let title = "ERROR\0";
-                    otherwinapi::MsgBox(&msg, title);
+                    eprintln!("[!] Failed to find 2.dll");
                     return 0x1;
                 }
 
@@ -140,9 +122,7 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
                 let _ = match dll_inject(&mut process, &dll2_path) {
                     Ok(_) => {},
                     Err(e) => {
-                        let msg = format!("[!] Failed to inject 2.dll.\nError Code: {}\0", e);
-                        let title = "ERROR\0";
-                        otherwinapi::MsgBox(&msg, title);
+                        eprintln!("[!] Failed to inject 2.dll: {}", e);
                         return 0x1;
                     }
                 };
@@ -170,7 +150,7 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
         Err(_e) => return 0x1,
     };
 
-    match suspend_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+    match kill_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
         Ok(_) => {},
         Err(_e) => return 0x1,
     };
@@ -187,6 +167,15 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                         },
                         Err(_e) => return 0x1,
                     }
+                    match kill_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
+                        Ok(_) => {},
+                        Err(e) => {
+                            let msg = format!("[!] Failed to suspend thread: {}\0", e);
+                            let title = "Failed to suspend thread\0";
+                            otherwinapi::MsgBox(&msg, &title);
+                            return 0x1;
+                        },
+                    };
                 },
                 LOAD_DLL_DEBUG_EVENT => {
                     module_list = match Module::get_module_from_path(&debugger.process, "") {
@@ -198,6 +187,13 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                         Err(_e) => return 0x1,
                     };
                 },
+                EXIT_PROCESS_DEBUG_EVENT => {
+                    // kill self process
+                    unsafe {
+                        processthreadsapi::ExitProcess(0)
+                    }
+                    return 0x0;
+                }
                 _ => {
                     unsafe { debugapi::ContinueDebugEvent(
                         debug_event.dwProcessId,
@@ -206,11 +202,6 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                     ) };
                 }
             }
-
-            match suspend_thread(&debugger.process, &mut thread_list, &mut module_list, &mut specific_module_list) {
-                Ok(_) => {},
-                Err(_e) => return 0x1,
-            };
 
             unsafe { debugapi::ContinueDebugEvent(
                 debug_event.dwProcessId,
@@ -224,13 +215,13 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
     }
 }
 
-fn suspend_thread(
+fn kill_thread(
     _process: &Process,
     thread_list: &Vec<Thread>,
     module_list: &Vec<Module>,
     specific_module_list: &Vec<Module>
 ) -> Result<(), u32> {
-    let mut to_suspend: Vec<&Thread> = Vec::new();
+    let mut to_kill: Vec<&Thread> = Vec::new();
     
     // Find the thread that is not in any of the module ranges
     for thread in thread_list {
@@ -248,7 +239,7 @@ fn suspend_thread(
             }
         }
         if !unk_flag {
-            to_suspend.push(thread);
+            to_kill.push(thread);
         }
     }
 
@@ -262,15 +253,15 @@ fn suspend_thread(
                 }
             };
             if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
-                to_suspend.push(thread);
+                to_kill.push(thread);
             }
         }
     }
 
-    for thread in &to_suspend {
-        match thread.suspend() {
+    for thread in to_kill {
+        match thread.terminate() {
             Ok(_) => {},
-            Err(_e) => return Err(0x1),
+            Err(e) => return Err(e),
         }
     }
 

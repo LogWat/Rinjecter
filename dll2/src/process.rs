@@ -255,8 +255,17 @@ impl Thread {
         Ok(tid)
     }
 
+    #[allow(dead_code)]
     pub fn suspend(&self) -> Result<(), u32> {
         let success = unsafe { processthreadsapi::SuspendThread(self.handle) };
+        if success == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        Ok(())
+    }
+
+    pub fn terminate(&self) -> Result<(), u32> {
+        let success = unsafe { processthreadsapi::TerminateThread(self.handle, 0) };
         if success == 0 {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
