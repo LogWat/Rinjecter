@@ -20,9 +20,9 @@ use winapi::{
         processthreadsapi, errhandlingapi, memoryapi,
         handleapi::{INVALID_HANDLE_VALUE},
     },
-    shared::minwindef::{
-        HMODULE,
-        MAX_PATH,
+    shared::{
+        minwindef::{HMODULE, MAX_PATH,},
+        windef::{HWND},
     },
 };
 use ntapi::ntpsapi;
@@ -51,6 +51,11 @@ pub struct Module {
     pub path: String,
     pub base_addr: u32,
     pub size: u32,
+}
+
+pub struct Window {
+    pub handle: HWND,
+    pub title: String,
 }
 
 impl Process {
@@ -230,6 +235,13 @@ impl Process {
     }
 }
 
+impl Drop for Process {
+    fn drop(&mut self) {
+        unsafe { handleapi::CloseHandle(self.handle) };
+    }
+}
+
+
 impl Thread {
     pub fn open_thread(tid: u32) -> Result<Self, u32> {
         let handle = unsafe { processthreadsapi::OpenThread(
@@ -287,6 +299,12 @@ impl Thread {
         }
 
         Ok(dw_start_addr)
+    }
+}
+
+impl Drop for Thread {
+    fn drop(&mut self) {
+        unsafe { handleapi::CloseHandle(self.handle) };
     }
 }
 
