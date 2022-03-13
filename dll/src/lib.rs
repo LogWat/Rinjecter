@@ -5,13 +5,11 @@ extern crate winapi;
 
 mod processlib;
 mod overwrite;
-mod dbg;
 mod threadpool;
 mod ffi_helpers;
 mod otherwinapi;
 
-use winapi::um::winuser::{MB_OK, MessageBoxW};
-use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi, debugapi, handleapi};
+use winapi::um::{winnt::*, libloaderapi, processthreadsapi, errhandlingapi, debugapi};
 use winapi::um::winbase::{CREATE_NEW_PROCESS_GROUP, CREATE_SUSPENDED};
 use winapi::shared::minwindef::*;
 
@@ -39,10 +37,11 @@ pub extern "stdcall" fn DllMain(
 
                 if debugapi::IsDebuggerPresent() != 0 {
                     let msg = "OMFG! You are debugging this Process!\0";
-                    err_msgbox(msg.to_string());
+                    let title = "WOW!\0";
+                    otherwinapi::MsgBox(&msg, &title);
                 }
 
-                let mut process = Process::current_process();
+                let process = Process::current_process();
 
                 // create process
                 let process_handle = match otherwinapi::CreateProcess(
@@ -55,7 +54,8 @@ pub extern "stdcall" fn DllMain(
                     Ok(h) => h,
                     Err(e) => {
                         let msg = format!("[!] Failed to create process.\nError Code: {}\0", e);
-                        err_msgbox(msg);
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, &title);
                         return 0x1;
                     }
                 };
@@ -67,7 +67,8 @@ pub extern "stdcall" fn DllMain(
                     Ok(m) => m,
                     Err(e) => {
                         let msg = format!("[!] Failed to get self module.\nError Code: {}\0", e);
-                        err_msgbox(msg);
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, &title);
                         return 0x1;
                     }
                 };
@@ -84,7 +85,8 @@ pub extern "stdcall" fn DllMain(
                 }
                 if dll2_path.is_empty() {
                     let msg = format!("[!] Failed to get self module.\0");
-                    err_msgbox(msg);
+                    let title = "ERROR\0";
+                    otherwinapi::MsgBox(&msg, &title);
                     return 0x1;
                 }
 
@@ -93,7 +95,8 @@ pub extern "stdcall" fn DllMain(
                     Ok(h) => h,
                     Err(e) => {
                         let msg = format!("[!] Failed to inject dll.\nError: {}\0", e);
-                        err_msgbox(msg);
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, &title);
                         return 0x1;
                     }
                 };
@@ -113,12 +116,14 @@ pub extern "stdcall" fn DllMain(
                     Ok(_) => {},
                     Err(e) => {
                         let msg = format!("Failed to overwrite.\n{}", e);
-                        err_msgbox(msg);
+                        let title = "ERROR!\0";
+                        otherwinapi::MsgBox(&msg, &title);
                     }
                 };
                 if changedisplayname(&process) == false {
-                    let errtext = "Failed to change display name.\0".to_string();
-                    err_msgbox(errtext);
+                    let msg = "Failed to change display name.\0".to_string();
+                    let title = "ERROR!\0";
+                        otherwinapi::MsgBox(&msg, &title);
                 }
             }
             return true as i32;
@@ -246,17 +251,4 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
         addr += 0x438;
     }
     false
-}
-
-unsafe fn err_msgbox(text: String) {
-    let lp_text: Vec<u16> = text.encode_utf16().collect();
-    let caption = "⚠Error⚠\0".to_string();
-    let lp_caption: Vec<u16> = caption.encode_utf16().collect();
-
-    MessageBoxW(
-        std::ptr::null_mut(),
-        lp_text.as_ptr(),
-        lp_caption.as_ptr(),
-        MB_OK
-    );
 }
