@@ -127,6 +127,16 @@ pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
         }
     }
 
+    let roundmode_ovw_list: Vec<OverWrite> = vec![
+        OverWrite {addr: 0x41f879, byte: AddrSize::Byte(0x5 as u8)},
+    ];
+    match overwrite_process_list(&roundmode_ovw_list, process) {
+        Ok(_) => {},
+        Err(e) => {
+            return Err(e);
+        }
+    }
+
     Ok(())
 }
 
