@@ -1,10 +1,20 @@
 use getset::Getters;
-use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt};
-use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt, errhandlingapi, psapi};
-use winapi::shared::minwindef::{HMODULE, DWORD, MAX_PATH};
-use winapi::um::winnt::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE};
+use std::{mem, ffi::OsString, os::windows::ffi::OsStringExt, ptr};
 use ntapi::ntpsapi;
 
+use winapi::{
+    um::{
+        handleapi, memoryapi, processthreadsapi, tlhelp32, winnt, errhandlingapi, psapi,
+        winnt::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE},
+        {winuser},
+    },
+    shared::{
+        minwindef::{HMODULE, DWORD, MAX_PATH},
+        windef::{HWND},
+    },
+};
+
+use crate::ffi_helpers;
 use crate::overwrite::AddrSize;
 
 #[derive(Getters)]
@@ -30,6 +40,12 @@ pub struct Module {
 pub struct Thread {
     pub handle: winnt::HANDLE,
     pub tid: u32,
+}
+
+pub struct Window {
+    pub hwnd: HWND,
+    pub title: String,
+    pub pid: u32,
 }
 
 impl Process {
@@ -296,5 +312,47 @@ impl Thread {
             return Err("Failed to get thread entry point.");
         }
         Ok(dw_start_addr as u32)
+    }
+}
+
+impl Window {
+    pub fn get_current_window() -> Result<Self, u32> {
+        let hwnd = unsafe { winuser::GetForegroundWindow() };
+        if hwnd == ptr::null_mut() {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        let mut pid: u32 = 0;
+        if unsafe { winuser::GetWindowThreadProcessId(hwnd, &mut pid) } == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        if pid == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        let mut title = [0u16; 512];
+        let len = unsafe { winuser::GetWindowTextW(hwnd, title.as_mut_ptr(), 512) };
+        if len == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        let title = OsString::from_wide(&title[..]).into_string().unwrap();
+
+
+        Ok(Window {
+            hwnd,
+            title,
+            pid,
+        })
+    }
+
+    pub fn change_window_title(&mut self, new_title: &str) -> Result<(), u32> {
+        let title = ffi_helpers::win32_to_utf16(new_title);
+        let ret = unsafe { winuser::SetWindowTextW(self.hwnd, title.as_ptr()) };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+        self.title = new_title.to_string();
+
+        Ok(())
     }
 }

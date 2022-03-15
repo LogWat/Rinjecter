@@ -101,16 +101,14 @@ pub extern "stdcall" fn DllMain(
                     }
                 };
                 
-                /*
                 processthreadsapi::CreateThread(
                     0 as *mut _,
                     0,
-                    Some(threadpool::Thread_Checker),
+                    Some(threadpool::thread_entry),
                     0 as *mut _,
                     0,
                     0 as *mut _
                 );
-                */
 
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
