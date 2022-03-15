@@ -22,13 +22,11 @@ use winapi::{
     },
     shared::{
         minwindef::{HMODULE, MAX_PATH,},
-        windef::{HWND},
     },
 };
 use ntapi::ntpsapi;
 
 use std::{mem, ptr, str, ffi::OsString, os::windows::ffi::OsStringExt};
-
 
 #[repr(C)]
 pub struct Process {
@@ -51,11 +49,6 @@ pub struct Module {
     pub path: String,
     pub base_addr: u32,
     pub size: u32,
-}
-
-pub struct Window {
-    pub handle: HWND,
-    pub title: String,
 }
 
 impl Process {
