@@ -1,6 +1,4 @@
 #![allow(non_snake_case)]
-extern crate libc;
-extern crate user32;
 extern crate winapi;
 
 mod processlib;
@@ -109,6 +107,12 @@ pub extern "stdcall" fn DllMain(
                     0,
                     0 as *mut _
                 );
+
+                std::thread::spawn(move || {
+                    let msg = "Press OK to close this window.\0";
+                    let title = "Press OK to close this window.\0";
+                    otherwinapi::MsgBox(&msg, &title);
+                });
 
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
