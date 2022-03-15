@@ -225,7 +225,7 @@ fn kill_thread(
     
     // Find the thread that is not in any of the module ranges
     for thread in thread_list {
-        let mut unk_flag = false;
+        let mut unk_flag = true;
         let thread_entry_point = match Thread::base_addr(thread) {
             Ok(addr) => addr,
             Err(_e) => {
@@ -234,17 +234,20 @@ fn kill_thread(
         };
         for module in module_list {
             if thread_entry_point >= module.base_addr && thread_entry_point < module.base_addr + module.size {
-                unk_flag = true;
+                unk_flag = false;
                 break;
             }
         }
-        if !unk_flag {
+        if unk_flag {
             to_kill.push(thread);
         }
     }
 
     // Find the thread that is in the specific module ranges
     for module in specific_module_list {
+        if module.path.contains("Mistaken") {
+            continue;
+        }
         for thread in thread_list {
             let thread_entry_point = match Thread::base_addr(thread) {
                 Ok(addr) => addr,
