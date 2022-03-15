@@ -24,37 +24,6 @@ pub extern "stdcall" fn DllMain(
                 libloaderapi::DisableThreadLibraryCalls(hinst_dll);
             }
 
-            /*
-            let process = Arc::new(Mutex::new(target_process));
-            let mut handles = vec![];
-            let th0 = thread::spawn(move || {
-                
-                match threads::wait_debugevnet(process.clone()) {
-                    Ok(_) => {},
-                    Err(err) => {
-                        let msg = format!("Failed to wait debugevnet: {}\0", err);
-                        let title = "ERROR\0";
-                        otherwinapi::MsgBox(&msg, title);
-                    }
-                }
-                let msg = "test\0";
-                let title = "test\0";
-                otherwinapi::MsgBox(&msg, &title);
-            });
-            
-            let th0 = tokio::spawn(async move {
-                match threads::wait_debugevnet(process.clone()).await {
-                    Ok(_) => {},
-                    Err(err) => {
-                        let msg = format!("Failed to wait debugevnet: {}\0", err);
-                        let title = "ERROR\0";
-                        otherwinapi::MsgBox(&msg, title);
-                    }
-                }
-            });
-            handles.push(th0);
-            */
-
             if unsafe { debugapi::IsDebuggerPresent() } != 0 {
                 let msg = "OMFG! You are debugging this Process!\0";
                 let title = "ERROR\0";
