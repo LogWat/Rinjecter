@@ -3,7 +3,8 @@ use crate::otherwinapi;
 use crate::dbg::Debugger;
 
 use winapi::um::{
-    minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT},
+    minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT,
+        EXCEPTION_DEBUG_EVENT},
     winnt::{DBG_CONTINUE},
     debugapi, processthreadsapi, libloaderapi, errhandlingapi,
     winbase::{INFINITE, DEBUG_PROCESS},
@@ -193,7 +194,13 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                         processthreadsapi::ExitProcess(0)
                     }
                     return 0x0;
-                }
+                },
+                EXCEPTION_DEBUG_EVENT => {
+                    let exception = unsafe { debug_event.u.Exception().ExceptionRecord.ExceptionCode };
+                    let msg = format!("[!] Exception: {}\0", exception);
+                    let title = "Exception\0";
+                    otherwinapi::MsgBox(&msg, &title);
+                },
                 _ => {
                     unsafe { debugapi::ContinueDebugEvent(
                         debug_event.dwProcessId,
