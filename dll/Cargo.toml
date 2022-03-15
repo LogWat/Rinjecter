@@ -7,12 +7,11 @@ edition = "2018"
 
 [dependencies]
 winapi = { version = "0.3.9", features = ["std", "everything"] }
-user32-sys = "*"
 libc = "*"
 rand = "0.8.4"
 getset = "0.1.0"
-failure = "0.1.0"
 ntapi = "0.3.6"
+tokio = { version = "1.4.0", features = ["full"]}
 
 [lib]
 path = "src/lib.rs"
