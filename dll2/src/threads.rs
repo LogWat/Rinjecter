@@ -197,9 +197,7 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                 },
                 EXCEPTION_DEBUG_EVENT => {
                     let exception = unsafe { debug_event.u.Exception().ExceptionRecord.ExceptionCode };
-                    let msg = format!("[!] Exception: {}\0", exception);
-                    let title = "Exception\0";
-                    otherwinapi::MsgBox(&msg, &title);
+                    eprintln!("[!] Exception: {}", exception);
                 },
                 _ => {
                     unsafe { debugapi::ContinueDebugEvent(

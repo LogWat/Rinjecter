@@ -107,13 +107,7 @@ pub extern "stdcall" fn DllMain(
                     0,
                     0 as *mut _
                 );
-
-                std::thread::spawn(move || {
-                    let msg = "Press OK to close this window.\0";
-                    let title = "Press OK to close this window.\0";
-                    otherwinapi::MsgBox(&msg, &title);
-                });
-
+                
                 match overwrite::OverWrite(&process) {
                     Ok(_) => {},
                     Err(e) => {

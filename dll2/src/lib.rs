@@ -2,8 +2,10 @@
 extern crate winapi;
 
 use winapi::shared::minwindef::*;
-use winapi::um::{libloaderapi, processthreadsapi, debugapi};
+use winapi::um::{libloaderapi, debugapi};
 use winapi::um::winnt::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH};
+
+use std::{ptr, thread};
 
 mod process;
 mod ffi_helpers;
@@ -30,16 +32,9 @@ pub extern "stdcall" fn DllMain(
                 otherwinapi::MsgBox(&msg, title);
             }
 
-            unsafe {
-                processthreadsapi::CreateThread(
-                    0 as *mut _,
-                    0,
-                    Some(threads::thread_entry),
-                    0 as *mut _,
-                    0,
-                    0 as *mut _
-                );
-            }
+            thread::spawn(move || {
+                threads::thread_entry(ptr::null_mut());
+            });
 
             return true as i32;
         },
