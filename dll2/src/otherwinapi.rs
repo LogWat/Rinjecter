@@ -1,8 +1,10 @@
-use winapi::um::winuser::{MB_OK, MessageBoxW};
 use winapi::shared::minwindef::{DWORD, BOOL};
-use winapi::um::winnt::{HANDLE};
-use winapi::um::processthreadsapi::{PROCESS_INFORMATION, STARTUPINFOW};
-use winapi::um::{processthreadsapi, errhandlingapi};
+use winapi::um::{
+    processthreadsapi, errhandlingapi,
+    processthreadsapi::{PROCESS_INFORMATION, STARTUPINFOW},
+    winnt::{HANDLE},
+    winuser::{MB_OK, MessageBoxW},
+};
 
 use std::{mem, ptr};
 
