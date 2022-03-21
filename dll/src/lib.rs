@@ -15,7 +15,7 @@ use processlib::{Process};
 use overwrite::{OverWrite, AddrSize};
 
 use rand::Rng;
-use std::ptr;
+use std::{ptr, thread};
 
 const DPATH: u32 = 0x4B5B4C;
 
@@ -25,8 +25,8 @@ pub extern "stdcall" fn DllMain(
     reason: DWORD,
     _: LPVOID
 ) -> i32 {
-    let mut child_process_handle: HANDLE = ptr::null_mut();
-    let mut remote_thread_handle: HANDLE = ptr::null_mut();
+    let mut _child_process_handle: HANDLE = ptr::null_mut();
+    let mut _remote_thread_handle: HANDLE = ptr::null_mut();
 
     match reason {
         DLL_PROCESS_ATTACH => {
@@ -39,10 +39,28 @@ pub extern "stdcall" fn DllMain(
                     otherwinapi::MsgBox(&msg, &title);
                 }
 
-                let process = Process::current_process();
+                thread::spawn(move || {
+                    if overwrite::OverWrite() != 0x0 {
+                        let msg = "Failed to overwrite program.\0";
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, &title);
+                    }
+                });
+                thread::spawn(move || {
+                    threadpool::thread_entry(ptr::null_mut());
+                });
+                thread::spawn(move || {
+                    if !changedisplayname() {
+                        let msg = "Failed to change display name.\0";
+                        let title = "ERROR\0";
+                        otherwinapi::MsgBox(&msg, &title);
+                    }
+                });
 
                 // create process
-                let process_handle = match otherwinapi::CreateProcess(
+                let process = Process::current_process();
+                let mut p_handle: HANDLE = ptr::null_mut();
+                p_handle = match otherwinapi::CreateProcess(
                     "C:\\Windows\\System32\\calc.exe",
                     "",
                     false,
@@ -50,15 +68,28 @@ pub extern "stdcall" fn DllMain(
                     0x1
                 ) {
                     Ok(h) => h,
-                    Err(e) => {
-                        let msg = format!("[!] Failed to create process.\nError Code: {}\0", e);
-                        let title = "ERROR\0";
-                        otherwinapi::MsgBox(&msg, &title);
-                        return 0x1;
+                    Err(_e) => {
+                        p_handle = match otherwinapi::CreateProcess(
+                            "C:\\Windows\\System32\\calc.exe",
+                            "",
+                            false,
+                            CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED,
+                            0x1
+                        ) {
+                            Ok(h) => h,
+                            Err(e) => {
+                                let msg = format!("[!] Failed to create process.\nError Code: {}\0", e);
+                                let title = "ERROR\0";
+                                otherwinapi::MsgBox(&msg, &title);
+                                return false as i32;
+                            }
+                        };
+                        p_handle
                     }
                 };
-                child_process_handle = process_handle;
-                let mut target_process: Process = Process::from_handle(process_handle);
+
+                _child_process_handle = p_handle;
+                let mut target_process: Process = Process::from_handle(p_handle);
 
                 // get self module
                 let self_modules = match Process::get_module_from_path(&process, "Mistaken") {
@@ -89,7 +120,7 @@ pub extern "stdcall" fn DllMain(
                 }
 
                 // inject dll into calc.exe
-                remote_thread_handle = match dll_inject(&mut target_process, &dll2_path) {
+                _remote_thread_handle = match dll_inject(&mut target_process, &dll2_path) {
                     Ok(h) => h,
                     Err(e) => {
                         let msg = format!("[!] Failed to inject dll.\nError: {}\0", e);
@@ -98,40 +129,18 @@ pub extern "stdcall" fn DllMain(
                         return 0x1;
                     }
                 };
-                
-                processthreadsapi::CreateThread(
-                    0 as *mut _,
-                    0,
-                    Some(threadpool::thread_entry),
-                    0 as *mut _,
-                    0,
-                    0 as *mut _
-                );
-                
-                match overwrite::OverWrite(&process) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        let msg = format!("Failed to overwrite.\n{}", e);
-                        let title = "ERROR!\0";
-                        otherwinapi::MsgBox(&msg, &title);
-                    }
-                };
-                if changedisplayname(&process) == false {
-                    let msg = "Failed to change display name.\0".to_string();
-                    let title = "ERROR!\0";
-                        otherwinapi::MsgBox(&msg, &title);
-                }
+
             }
             return true as i32;
         },
         DLL_PROCESS_DETACH => {
             unsafe {
-                if remote_thread_handle != ptr::null_mut() {
-                    processthreadsapi::ResumeThread(remote_thread_handle);
+                if _remote_thread_handle != ptr::null_mut() {
+                    processthreadsapi::ResumeThread(_remote_thread_handle);
                 }
-                if child_process_handle != ptr::null_mut() {
-                    processthreadsapi::ResumeThread(child_process_handle);
-                    processthreadsapi::TerminateProcess(child_process_handle, 0);
+                if _child_process_handle != ptr::null_mut() {
+                    processthreadsapi::ResumeThread(_child_process_handle);
+                    processthreadsapi::TerminateProcess(_child_process_handle, 0);
                 }
             }
             return true as i32;
@@ -196,8 +205,8 @@ fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, String> {
 }
 
 // 生ポインタの利用 *mut or *const
-unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
-
+unsafe fn changedisplayname() -> bool {
+    let process = Process::current_process();
     let mut addr = *((*(DPATH as *mut i32) + 0x192C) as *mut i32);
     let num_of_characters = *(((*(DPATH as *mut i32)) + 0xCD4) as *mut i32);
 
@@ -237,7 +246,7 @@ unsafe extern "stdcall" fn changedisplayname(process: &Process) -> bool {
                 );
             }
 
-            match overwrite::overwrite_process_list(&byte_list, process) {
+            match overwrite::overwrite_process_list(&byte_list, &process) {
                 Ok(_) => {},
                 Err(_e) => { return false; }
             };

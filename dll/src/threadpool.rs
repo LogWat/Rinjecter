@@ -35,6 +35,6 @@ pub extern "system" fn thread_entry(_module: *mut libc::c_void) -> u32 {
                 continue;
             }
         }
-        unsafe { synchapi::Sleep(10000); }
+        unsafe { synchapi::Sleep(5000); }
     }
 }

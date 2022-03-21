@@ -8,7 +8,6 @@ pub enum AddrSize {
     Byte(u8),
     Word(u16),
     Dword(u32),
-    Qword(u64),
 }
 
 pub struct OverWrite {
@@ -16,7 +15,8 @@ pub struct OverWrite {
     pub byte: AddrSize,
 }
 
-pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
+pub unsafe fn OverWrite() -> u32 {
+    let process = Process::current_process();
 
     let rb1: [u32; 21] = [
         0x4C4300A1, 0x430005C7, 0x43001589, 0x43003D83, 
@@ -55,10 +55,10 @@ pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
         OverWrite {addr: 0x47BF1D, byte: AddrSize::Dword(rb1[5])}, OverWrite {addr: 0x47BF21, byte: AddrSize::Word(rb2[1])},    // mov edx, [eax+0xBC30] -> mov edx, [0x4C4300]
     ];
 
-    match overwrite_process_list(&rs_ovw_list, process) {
+    match overwrite_process_list(&rs_ovw_list, &process) {
         Ok(_) => {},
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     }
 
@@ -80,10 +80,10 @@ pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
         OverWrite {addr: 0x42E90D, byte: AddrSize::Dword(rb1[11])}, OverWrite {addr: 0x42E911, byte: AddrSize::Word(rb2[1])},   // mov ecx, [esi + 0xBC34] -> mov ecx, [0x4C4304]
     ];
 
-    match overwrite_process_list(&wf_ovw_list, process) {
+    match overwrite_process_list(&wf_ovw_list, &process) {
         Ok(_) => {},
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     }
 
@@ -106,10 +106,10 @@ pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
         OverWrite {addr: 0x42E1EB, byte: AddrSize::Dword(rb1[19])}, OverWrite {addr: 0x42E1EF, byte: AddrSize::Word(rb2[1])},    // mov [ecx + 0xBC38], edx -> mov [0x4C4308], edx
     ];
 
-    match overwrite_process_list(&eog_ovw_list, process) {
+    match overwrite_process_list(&eog_ovw_list, &process) {
         Ok(_) => {},
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     }
 
@@ -120,27 +120,27 @@ pub unsafe fn OverWrite(process: &Process) -> Result<(), &'static str> {
         OverWrite {addr: 0x441532, byte: AddrSize::Byte(0x2C as u8)},           // -> jmp 0x44155F
     ];
 
-    match overwrite_process_list(&other_ovw_list, process) {
+    match overwrite_process_list(&other_ovw_list, &process) {
         Ok(_) => {},
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     }
 
     let roundmode_ovw_list: Vec<OverWrite> = vec![
         OverWrite {addr: 0x41f879, byte: AddrSize::Byte(0x5 as u8)},
     ];
-    match overwrite_process_list(&roundmode_ovw_list, process) {
+    match overwrite_process_list(&roundmode_ovw_list, &process) {
         Ok(_) => {},
-        Err(e) => {
-            return Err(e);
+        Err(_e) => {
+            return 0x1;
         }
     }
 
-    Ok(())
+    0x0
 }
 
-pub unsafe fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), &'static str> {
+pub unsafe fn overwrite_process_list(ovw_list: &Vec<OverWrite>, process: &Process) -> Result<(), u32> {
 
     let min_addr = ovw_list.iter().map(|ovw| ovw.addr).min().unwrap();
     let max_addr = ovw_list.iter().map(|ovw| ovw.addr).max().unwrap();
