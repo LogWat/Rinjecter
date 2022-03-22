@@ -4,7 +4,8 @@ use winapi::{
             HANDLE, TOKEN_ADJUST_PRIVILEGES, TOKEN_QUERY, TOKEN_PRIVILEGES, SE_PRIVILEGE_ENABLED,
             PROCESS_ALL_ACCESS,
         },
-        processthreadsapi, winbase, securitybaseapi, errhandlingapi, debugapi,
+        processthreadsapi, winbase, securitybaseapi, errhandlingapi, debugapi, libloaderapi,
+        handleapi,
     },
 };
 
@@ -94,5 +95,25 @@ impl Debugger {
         }
 
         Ok(())
+    }
+
+    pub fn func_resolver(&self, func_name: &str, dll_name: &str) -> Result<u32, u32> {
+        let func_name = ffi_helpers::win32_to_i8(func_name);
+        let dll_name = ffi_helpers::win32_to_utf16(dll_name);
+        let dll_handle = unsafe { libloaderapi::GetModuleHandleW(dll_name.as_ptr()) };
+        if dll_handle == std::ptr::null_mut() {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        let func_addr = unsafe {
+            libloaderapi::GetProcAddress(dll_handle, func_name.as_ptr())
+        };
+        unsafe { handleapi::CloseHandle(dll_handle as HANDLE); }
+
+        if func_addr == std::ptr::null_mut() {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        Ok(func_addr as u32)
     }
 }
