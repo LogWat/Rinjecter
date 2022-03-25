@@ -1,4 +1,4 @@
-# test_rust
+# Rinject
 
 ### RustによるDLLインジェクション及びプロセスデバッグの練習・実践用プログラム
 - dll_injection.asmをシェルコードとして実行させ，dllを対象のプログラム(a.exeとする)にinject
