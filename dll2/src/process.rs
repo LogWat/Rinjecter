@@ -7,6 +7,8 @@ use winapi::{
             MEM_COMMIT,
             MEM_RESERVE,
             PAGE_READWRITE,
+            PAGE_GUARD,
+            MEMORY_BASIC_INFORMATION,
         },
         tlhelp32, handleapi, psapi,
         tlhelp32::{
@@ -37,6 +39,16 @@ pub struct Process {
 unsafe impl Send for Process {}
 unsafe impl Sync for Process {}
 
+pub struct MemAttr {
+    pub base_addr: u32,
+    pub size: u32,
+    pub attr: u32,
+}
+
+pub struct MemoeryBreakPoint {
+    pub old_mem_attr: MemAttr,
+    pub new_mem_attr: MemAttr,
+}
 
 pub struct Thread {
     pub handle: HANDLE,
@@ -225,6 +237,81 @@ impl Process {
             return Err(unsafe { errhandlingapi::GetLastError() });
         }
         Ok(())
+    }
+
+    pub fn query_map(&self) -> Result<Vec<MemAttr>, u32> {
+        let mut mem_attrs: Vec<MemAttr> = Vec::new();
+        let mut mem_entry: MEMORY_BASIC_INFORMATION = unsafe { mem::zeroed() };
+        let mut addr = 0x0;
+        loop {
+            let ret = unsafe {
+                memoryapi::VirtualQueryEx(
+                    self.handle,
+                    addr as _,
+                    &mut mem_entry,
+                    mem::size_of::<MEMORY_BASIC_INFORMATION>() as _,
+                )
+            };
+            if ret == 0 {
+                return Err(unsafe { errhandlingapi::GetLastError() });
+            }
+
+            let base_addr = mem_entry.BaseAddress as u32;
+            let size = mem_entry.RegionSize as u32;
+            mem_attrs.push(MemAttr {
+                base_addr: base_addr,
+                size: size,
+                attr: mem_entry.State,
+            });
+            addr = base_addr + size;
+
+            // User memory location ( 0xC0000000 ~ 0x7FFFFFFF )
+            if addr >= 0x7FFF_FFFF {
+                break;
+            }
+        }
+        Ok(mem_attrs)
+    }
+
+    pub fn bp_set_mem(&self, old_mem_attr: MemAttr) -> Result<MemoeryBreakPoint, u32> {
+        let mut bp = MemoeryBreakPoint {
+            old_mem_attr: old_mem_attr,
+            new_mem_attr: MemAttr {
+                base_addr: old_mem_attr.base_addr,
+                size: old_mem_attr.size,
+                attr: 0,
+            },
+        };
+
+        if let Ok(mem_attr) = self.change_memory_protection(
+            old_mem_attr.base_addr,
+            old_mem_attr.size,
+            old_mem_attr.attr | PAGE_GUARD,
+        ) {
+            bp.new_mem_attr.attr = mem_attr;
+        } else {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        Ok(bp)
+    }
+
+    fn change_memory_protection(&self, addr: u32, size: u32, attr: u32) -> Result<u32, u32> {
+        let mut oldp: u32 = 0;
+        let ret = unsafe {
+            memoryapi::VirtualProtectEx(
+                self.handle,
+                addr as _,
+                size as _,
+                attr,
+                &mut oldp as _,
+            )
+        };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        Ok(oldp)
     }
 }
 
