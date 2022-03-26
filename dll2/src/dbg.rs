@@ -97,6 +97,7 @@ impl Debugger {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn func_resolver(&self, func_name: &str, dll_name: &str) -> Result<u32, u32> {
         let func_name = ffi_helpers::win32_to_i8(func_name);
         let dll_name = ffi_helpers::win32_to_utf16(dll_name);

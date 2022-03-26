@@ -241,31 +241,34 @@ impl Process {
 
     pub fn query_map(&self) -> Result<Vec<MemAttr>, u32> {
         let mut mem_attrs: Vec<MemAttr> = Vec::new();
-        let mut mem_entry: MEMORY_BASIC_INFORMATION = unsafe { mem::zeroed() };
+        let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { mem::zeroed() };
         let mut addr = 0x0;
         loop {
             let ret = unsafe {
                 memoryapi::VirtualQueryEx(
                     self.handle,
                     addr as _,
-                    &mut mem_entry,
+                    &mut mbi,
                     mem::size_of::<MEMORY_BASIC_INFORMATION>() as _,
                 )
             };
             if ret == 0 {
+                if addr >= 0x7FFF_0000 {
+                    return Ok(mem_attrs);
+                }
                 return Err(unsafe { errhandlingapi::GetLastError() });
             }
 
-            let base_addr = mem_entry.BaseAddress as u32;
-            let size = mem_entry.RegionSize as u32;
+            let base_addr = mbi.BaseAddress as u32;
+            let size = mbi.RegionSize as u32;
             mem_attrs.push(MemAttr {
                 base_addr: base_addr,
                 size: size,
-                attr: mem_entry.State,
+                attr: mbi.State,
             });
             addr = base_addr + size;
 
-            // User memory location ( 0xC0000000 ~ 0x7FFFFFFF )
+            // User memory location ( 0x00000000 ~ 0x7FFF0000 )
             if addr >= 0x7FFF_FFFF {
                 break;
             }
@@ -273,9 +276,13 @@ impl Process {
         Ok(mem_attrs)
     }
 
-    pub fn bp_set_mem(&self, old_mem_attr: MemAttr) -> Result<MemoeryBreakPoint, u32> {
+    pub fn bp_set_mem(&self, old_mem_attr: &MemAttr) -> Result<MemoeryBreakPoint, u32> {
         let mut bp = MemoeryBreakPoint {
-            old_mem_attr: old_mem_attr,
+            old_mem_attr: MemAttr {
+                base_addr: old_mem_attr.base_addr,
+                size: old_mem_attr.size,
+                attr: old_mem_attr.attr,
+            },
             new_mem_attr: MemAttr {
                 base_addr: old_mem_attr.base_addr,
                 size: old_mem_attr.size,
@@ -312,6 +319,26 @@ impl Process {
         }
 
         Ok(oldp)
+    }
+
+    pub fn readmemory(&self, addr: u32, length: u32) -> Result<Vec<u8>, u32> {
+        let mut buf: Vec<u8> = Vec::new();
+        buf.resize(length as _, 0);
+
+        let ret = unsafe {
+            memoryapi::ReadProcessMemory(
+                self.handle,
+                addr as _,
+                buf.as_mut_ptr() as _,
+                length as _,
+                0 as _,
+            )
+        };
+        if ret == 0 {
+            return Err(unsafe { errhandlingapi::GetLastError() });
+        }
+
+        Ok(buf)
     }
 }
 

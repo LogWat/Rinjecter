@@ -1,10 +1,11 @@
-use crate::process::{Process, Thread, Module};
+use crate::process::{Process, Thread, Module, MemAttr};
 use crate::otherwinapi;
+use crate::ffi_helpers;
 use crate::dbg::Debugger;
 
 use winapi::um::{
     minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT,
-        EXCEPTION_DEBUG_EVENT},
+        EXCEPTION_DEBUG_EVENT, EXCEPTION_GUARD_PAGE},
     winnt::{DBG_CONTINUE},
     debugapi, processthreadsapi, libloaderapi, errhandlingapi,
     winbase::{INFINITE, DEBUG_PROCESS},
@@ -156,6 +157,9 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
         Err(_e) => return 0x1,
     };
 
+    // set breakpoint
+    mem_bp_test(&debugger.process);
+
     let mut debug_event: DEBUG_EVENT = unsafe { mem::zeroed() };
     let cnt_flag: u32 = DBG_CONTINUE;
     loop {
@@ -198,6 +202,11 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                 EXCEPTION_DEBUG_EVENT => {
                     let exception = unsafe { debug_event.u.Exception().ExceptionRecord.ExceptionCode };
                     eprintln!("[!] Exception: {}", exception);
+                },
+                EXCEPTION_GUARD_PAGE => {
+                    let msg = "[!] Guard page exception detected\0";
+                    let title = "INFO\0";
+                    otherwinapi::MsgBox(&msg, &title);
                 },
                 _ => {
                     unsafe { debugapi::ContinueDebugEvent(
@@ -351,4 +360,57 @@ fn dll_inject(process: &mut Process, dll_path: &str) -> Result<HANDLE, String> {
     };
 
     return Ok(h_thread);
+}
+
+fn mem_bp_test(tp: &Process) -> u32 {
+    let mem_map: Vec<MemAttr> = match tp.query_map() {
+        Ok(map) => map,
+        Err(_e) => {
+            return 0x1;
+        }
+    };
+
+    let mem_content = match tp.readmemory(0x004B5B4C, 0x4) {
+        Ok(c) => {
+            match ffi_helpers::vector_to_addr(&c) {
+                Ok(addr) => addr,
+                Err(_e) => {
+                    return 0x1;
+                }
+            }
+        },
+        Err(_e) => {
+            return 0x1;
+        }
+    };
+
+    let mut attr = 0x0;
+    for map in mem_map {
+        if map.base_addr <= mem_content && mem_content < map.base_addr + map.size {
+            attr = map.attr;
+            break;
+        }
+    }
+
+    let bp = MemAttr {
+        base_addr: mem_content + 0xb754,
+        size: 0x4 * 0x4,
+        attr: attr,
+    };
+
+    let msg = format!("BP Address: {:x}\0", bp.base_addr);
+    let title = "INFO\0";
+    otherwinapi::MsgBox(&msg, &title);
+
+    match tp.bp_set_mem(&bp) {
+        Ok(_) => {},
+        Err(_e) => {
+            let msg = format!("Failed to set memory breakpoint. Error Code: {}\0", _e);
+            let title = "Error\0";
+            otherwinapi::MsgBox(&msg, &title);
+            return 0x1;
+        }
+    };
+
+    0x0
 }
