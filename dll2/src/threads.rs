@@ -5,7 +5,7 @@ use crate::dbg::Debugger;
 
 use winapi::um::{
     minwinbase::{DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT,
-        EXCEPTION_DEBUG_EVENT, EXCEPTION_GUARD_PAGE},
+        EXCEPTION_DEBUG_EVENT, EXCEPTION_GUARD_PAGE, EXCEPTION_ACCESS_VIOLATION},
     winnt::{DBG_CONTINUE},
     debugapi, processthreadsapi, libloaderapi, errhandlingapi,
     winbase::{INFINITE, DEBUG_PROCESS},
@@ -208,6 +208,11 @@ fn wait_debugevnet(debugger: &Debugger) -> u32 {
                     let title = "INFO\0";
                     otherwinapi::MsgBox(&msg, &title);
                 },
+                EXCEPTION_ACCESS_VIOLATION => {
+                    let msg = "[!] Access violation detected\0";
+                    let title = "INFO\0";
+                    otherwinapi::MsgBox(&msg, &title);
+                },
                 _ => {
                     unsafe { debugapi::ContinueDebugEvent(
                         debug_event.dwProcessId,
@@ -398,11 +403,7 @@ fn mem_bp_test(tp: &Process) -> u32 {
         attr: attr,
     };
 
-    let msg = format!("BP Address: {:x}\0", bp.base_addr);
-    let title = "INFO\0";
-    otherwinapi::MsgBox(&msg, &title);
-
-    match tp.bp_set_mem(&bp) {
+    let _bp = match tp.bp_set_mem(&bp) {
         Ok(_) => {},
         Err(_e) => {
             let msg = format!("Failed to set memory breakpoint. Error Code: {}\0", _e);

@@ -87,10 +87,10 @@ impl Process {
         if unsafe {
             memoryapi::VirtualProtectEx(
                 self.handle,
-                address as *mut _,
-                size as usize,
+                address as _,
+                size as _,
                 protection,
-                &mut oldp as *mut _ as _,
+                &mut oldp,
             )
         } == 0 {
             return Err(unsafe { errhandlingapi::GetLastError() });

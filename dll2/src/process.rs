@@ -1,14 +1,8 @@
 use winapi::{
     um::{
         winnt::{
-            HANDLE, 
-            PROCESS_ALL_ACCESS,
-            THREAD_ALL_ACCESS,
-            MEM_COMMIT,
-            MEM_RESERVE,
-            PAGE_READWRITE,
-            PAGE_GUARD,
-            MEMORY_BASIC_INFORMATION,
+            HANDLE, PROCESS_ALL_ACCESS, THREAD_ALL_ACCESS, MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE,
+            PAGE_NOACCESS, PAGE_GUARD, MEMORY_BASIC_INFORMATION
         },
         tlhelp32, handleapi, psapi,
         tlhelp32::{
@@ -45,7 +39,7 @@ pub struct MemAttr {
     pub attr: u32,
 }
 
-pub struct MemoeryBreakPoint {
+pub struct MemoryBreakPoint {
     pub old_mem_attr: MemAttr,
     pub new_mem_attr: MemAttr,
 }
@@ -276,8 +270,8 @@ impl Process {
         Ok(mem_attrs)
     }
 
-    pub fn bp_set_mem(&self, old_mem_attr: &MemAttr) -> Result<MemoeryBreakPoint, u32> {
-        let mut bp = MemoeryBreakPoint {
+    pub fn bp_set_mem(&self, old_mem_attr: &MemAttr) -> Result<MemoryBreakPoint, u32> {
+        let mut bp = MemoryBreakPoint {
             old_mem_attr: MemAttr {
                 base_addr: old_mem_attr.base_addr,
                 size: old_mem_attr.size,
@@ -290,14 +284,15 @@ impl Process {
             },
         };
 
-        if let Ok(mem_attr) = self.change_memory_protection(
+        match self.change_memory_protection(
             old_mem_attr.base_addr,
             old_mem_attr.size,
-            old_mem_attr.attr | PAGE_GUARD,
+            PAGE_GUARD,
         ) {
-            bp.new_mem_attr.attr = mem_attr;
-        } else {
-            return Err(unsafe { errhandlingapi::GetLastError() });
+            Ok(o) => {
+                bp.new_mem_attr.attr = o;
+            },
+            Err(err) => return Err(err),
         }
 
         Ok(bp)
@@ -311,7 +306,7 @@ impl Process {
                 addr as _,
                 size as _,
                 attr,
-                &mut oldp as _,
+                &mut oldp,
             )
         };
         if ret == 0 {
